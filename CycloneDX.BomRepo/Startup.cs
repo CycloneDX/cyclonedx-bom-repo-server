@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using CycloneDX.BomRepo.Formatters;
+using CycloneDX.BomRepo.Options;
 
 namespace CycloneDX.BomRepo
 {
@@ -27,11 +29,26 @@ namespace CycloneDX.BomRepo
         public void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddControllers();
+            services.AddControllers(config =>
+            {
+                config.RespectBrowserAcceptHeader = true;
+                config.ReturnHttpNotAcceptable = true;
+            }).AddMvcOptions(c =>
+            {
+                c.OutputFormatters.Clear();
+                c.OutputFormatters.Add(new JsonOutputFormatter());
+                c.OutputFormatters.Add(new XmlOutputFormatter());
+                c.OutputFormatters.Add(new ProtobufOutputFormatter());
+            });
+            
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "CycloneDX.BomRepo", Version = "v1" });
             });
+
+            var repoOptions = new RepoOptions();
+            Configuration.GetSection("RepoOptions").Bind(repoOptions);
+            services.AddSingleton(repoOptions);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
