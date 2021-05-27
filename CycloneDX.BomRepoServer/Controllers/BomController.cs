@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using CycloneDX.BomRepoServer.Options;
+using CycloneDX.Models.v1_3;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -10,11 +12,13 @@ namespace CycloneDX.BomRepoServer.Controllers
     [Route("[controller]")]
     public class BomController : ControllerBase
     {
+        private readonly AllowedMethodsOptions _allowedMethods;
         private readonly RepoOptions _repoOptions;
         private readonly ILogger<BomController> _logger;
 
-        public BomController(RepoOptions repoOptions, ILogger<BomController> logger)
+        public BomController(AllowedMethodsOptions allowedMethods, RepoOptions repoOptions, ILogger<BomController> logger)
         {
+            _allowedMethods = allowedMethods;
             _repoOptions = repoOptions;
             _logger = logger;
         }
@@ -22,6 +26,8 @@ namespace CycloneDX.BomRepoServer.Controllers
         [HttpGet]
         public ActionResult<Models.v1_3.Bom> Get(string serialNumber)
         {
+            if (!_allowedMethods.Get) return StatusCode(403);
+                
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
             
             var fileName = Path.Combine(_repoOptions.Directory, serialNumber.Replace(':', '_'));
@@ -41,6 +47,8 @@ namespace CycloneDX.BomRepoServer.Controllers
         [HttpPost]
         public ActionResult Post(Models.v1_3.Bom bom)
         {
+            if (!_allowedMethods.Post) return StatusCode(403);
+
             if (string.IsNullOrEmpty(bom.SerialNumber))
             {
                 bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
@@ -63,6 +71,8 @@ namespace CycloneDX.BomRepoServer.Controllers
         [HttpDelete]
         public ActionResult Delete(string serialNumber)
         {
+            if (!_allowedMethods.Delete) return StatusCode(403);
+
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
 
             var fileName = Path.Combine(_repoOptions.Directory, serialNumber.Replace(':', '_'));

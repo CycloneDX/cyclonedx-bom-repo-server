@@ -53,8 +53,12 @@ namespace CycloneDX.BomRepoServer
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "CycloneDX BOM Repository Server", Version = "v1" });
             });
 
+            var allowedMethodsOptions = new AllowedMethodsOptions();
+            Configuration.GetSection("AllowedMethods").Bind(allowedMethodsOptions);
+            services.AddSingleton(allowedMethodsOptions);
+
             var repoOptions = new RepoOptions();
-            Configuration.GetSection("RepoOptions").Bind(repoOptions);
+            Configuration.GetSection("Repo").Bind(repoOptions);
             services.AddSingleton(repoOptions);
         }
 
