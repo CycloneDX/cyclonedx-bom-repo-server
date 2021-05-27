@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.6.30114.105
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CycloneDX.BomRepoServer", "CycloneDX.BomRepoServer\CycloneDX.BomRepoServer.csproj", "{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}"
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|x64.Build.0 = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Debug|x86.Build.0 = Debug|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|x64.ActiveCfg = Release|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|x64.Build.0 = Release|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|x86.ActiveCfg = Release|Any CPU
+		{3405AA2D-C2A6-4C57-932F-BAFC2662D3AA}.Release|x86.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

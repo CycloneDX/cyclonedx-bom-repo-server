@@ -12,11 +12,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
-using CycloneDX.BomRepo.Formatters;
-using CycloneDX.BomRepo.Options;
+using CycloneDX.BomRepoServer.Formatters;
+using CycloneDX.BomRepoServer.Options;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
-namespace CycloneDX.BomRepo
+namespace CycloneDX.BomRepoServer
 {
     public class Startup
     {
@@ -50,7 +50,7 @@ namespace CycloneDX.BomRepo
             
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "CycloneDX.BomRepo", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "CycloneDX BOM Repository Server", Version = "v1" });
             });
 
             var repoOptions = new RepoOptions();
@@ -64,9 +64,10 @@ namespace CycloneDX.BomRepo
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseSwagger();
-                app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CycloneDX.BomRepo v1"));
             }
+
+            app.UseSwagger();
+            app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CycloneDX BOM Repository Server v1"));
 
             app.UseHttpsRedirection();
 

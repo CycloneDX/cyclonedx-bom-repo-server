@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
 
-namespace CycloneDX.BomRepo.Formatters
+namespace CycloneDX.BomRepoServer.Formatters
 {
     public class ProtobufOutputFormatter : OutputFormatter
     {

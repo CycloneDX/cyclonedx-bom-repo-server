@@ -1,4 +1,4 @@
-namespace CycloneDX.BomRepo.Options
+namespace CycloneDX.BomRepoServer.Options
 {
     public class RepoOptions
     {

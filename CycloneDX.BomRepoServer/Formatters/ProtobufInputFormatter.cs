@@ -6,16 +6,15 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
 
-namespace CycloneDX.BomRepo.Formatters
+namespace CycloneDX.BomRepoServer.Formatters
 {
-    public class JsonInputFormatter : TextInputFormatter
+    public class ProtobufInputFormatter : TextInputFormatter
     {
-        public JsonInputFormatter()
+        public ProtobufInputFormatter()
         {
-            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/json"));
-            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json"));
-            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.3"));
-            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.2"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/octet-stream"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.3"));
             SupportedEncodings.Add(Encoding.UTF8);
             SupportedEncodings.Add(Encoding.Unicode);
         }
@@ -24,13 +23,9 @@ namespace CycloneDX.BomRepo.Formatters
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
         {
-            using var reader = new StreamReader(context.HttpContext.Request.Body, effectiveEncoding);
-
-            var jsonString = await reader.ReadToEndAsync();
-
             try
             {
-                var bom = Json.Deserializer.Deserialize(jsonString);
+                var bom = Protobuf.Deserializer.Deserialize(context.HttpContext.Request.Body);
                 return await InputFormatterResult.SuccessAsync(bom);
             }
             catch (Exception)
@@ -38,6 +33,5 @@ namespace CycloneDX.BomRepo.Formatters
                 return await InputFormatterResult.FailureAsync();
             }
         }
-
     }
 }

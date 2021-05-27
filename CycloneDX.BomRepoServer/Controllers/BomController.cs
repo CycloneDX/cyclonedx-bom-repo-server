@@ -1,10 +1,10 @@
 ﻿using System;
 using System.IO;
-using CycloneDX.BomRepo.Options;
+using CycloneDX.BomRepoServer.Options;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace CycloneDX.BomRepo.Controllers
+namespace CycloneDX.BomRepoServer.Controllers
 {
     [ApiController]
     [Route("[controller]")]

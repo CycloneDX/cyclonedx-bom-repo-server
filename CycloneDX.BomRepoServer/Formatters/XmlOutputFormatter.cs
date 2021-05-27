@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
 
-namespace CycloneDX.BomRepo.Formatters
+namespace CycloneDX.BomRepoServer.Formatters
 {
     public class XmlOutputFormatter : TextOutputFormatter
     {
