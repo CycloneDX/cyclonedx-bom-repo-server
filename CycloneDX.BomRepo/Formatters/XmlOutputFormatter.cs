@@ -23,15 +23,7 @@ namespace CycloneDX.BomRepo.Formatters
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanWriteType(Type type)
-        {
-            if (typeof(Models.v1_3.Bom).IsAssignableFrom(type))
-            {
-                return base.CanWriteType(type);
-            }
-
-            return false;
-        }
+        protected override bool CanWriteType(Type type) => type == typeof(Models.v1_3.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
         {

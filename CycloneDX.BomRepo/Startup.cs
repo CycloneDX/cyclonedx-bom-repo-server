@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using CycloneDX.BomRepo.Formatters;
 using CycloneDX.BomRepo.Options;
+using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace CycloneDX.BomRepo
 {
@@ -39,6 +41,11 @@ namespace CycloneDX.BomRepo
                 c.OutputFormatters.Add(new JsonOutputFormatter());
                 c.OutputFormatters.Add(new XmlOutputFormatter());
                 c.OutputFormatters.Add(new ProtobufOutputFormatter());
+                c.OutputFormatters.Add(new SystemTextJsonOutputFormatter(new JsonSerializerOptions()));
+                c.InputFormatters.Clear();
+                c.InputFormatters.Add(new JsonInputFormatter());
+                c.InputFormatters.Add(new XmlInputFormatter());
+                c.InputFormatters.Add(new ProtobufInputFormatter());
             });
             
             services.AddSwaggerGen(c =>

@@ -1,13 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Net.Mail;
 using System.Net.Mime;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
-using CycloneDX;
 
 namespace CycloneDX.BomRepo.Formatters
 {
@@ -23,15 +20,7 @@ namespace CycloneDX.BomRepo.Formatters
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanWriteType(Type type)
-        {
-            if (typeof(Models.v1_3.Bom).IsAssignableFrom(type))
-            {
-                return base.CanWriteType(type);
-            }
-
-            return false;
-        }
+        protected override bool CanWriteType(Type type) => type == typeof(Models.v1_3.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
         {

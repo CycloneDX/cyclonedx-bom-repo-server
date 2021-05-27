@@ -14,15 +14,7 @@ namespace CycloneDX.BomRepo.Formatters
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.3"));
         }
 
-        protected override bool CanWriteType(Type type)
-        {
-            if (typeof(Models.v1_3.Bom).IsAssignableFrom(type))
-            {
-                return base.CanWriteType(type);
-            }
-
-            return false;
-        }
+        protected override bool CanWriteType(Type type) => type == typeof(Models.v1_3.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context)
         {
