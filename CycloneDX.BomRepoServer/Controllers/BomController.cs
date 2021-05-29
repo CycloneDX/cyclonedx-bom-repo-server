@@ -1,8 +1,9 @@
 ﻿using System;
-using System.IO;
-using System.Net;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.BomRepoServer.Options;
-using CycloneDX.Models.v1_3;
+using CycloneDX.BomRepoServer.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
@@ -12,72 +13,76 @@ namespace CycloneDX.BomRepoServer.Controllers
     [Route("[controller]")]
     public class BomController : ControllerBase
     {
+        private static readonly Regex SerialNumberRegex = new Regex(
+            @"^urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\})$");
+
         private readonly AllowedMethodsOptions _allowedMethods;
-        private readonly RepoOptions _repoOptions;
+        private readonly RepoService _repoService;
         private readonly ILogger<BomController> _logger;
 
-        public BomController(AllowedMethodsOptions allowedMethods, RepoOptions repoOptions, ILogger<BomController> logger)
+        public BomController(AllowedMethodsOptions allowedMethods, RepoService repoService, ILogger<BomController> logger)
         {
             _allowedMethods = allowedMethods;
-            _repoOptions = repoOptions;
+            _repoService = repoService;
             _logger = logger;
         }
 
+        internal static bool ValidSerialNumber(string serialNumber)
+        {
+            return SerialNumberRegex.IsMatch(serialNumber);
+        }
+        
         [HttpGet]
-        public ActionResult<Models.v1_3.Bom> Get(string serialNumber)
+        public async Task<ActionResult<Models.v1_3.Bom>> Get(string serialNumber, int? version)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
+            if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
                 
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
+
+            Models.v1_3.Bom result;
+            if (version.HasValue)
+                result = await _repoService.Retrieve(serialNumber, version.Value);
+            else
+                result = await _repoService.RetrieveLatest(serialNumber);
+
+            if (result == null) return NotFound();
             
-            var fileName = Path.Combine(_repoOptions.Directory, serialNumber.Replace(':', '_'));
-
-            if (System.IO.File.Exists(fileName))
-            {
-                using (var fs = new FileStream(fileName, FileMode.Open, FileAccess.Read))
-                {
-                    var bom = Protobuf.Deserializer.Deserialize(fs);
-                    return bom;
-                }
-            }
-
-            return NotFound();
+            return result;
         }
 
         [HttpPost]
-        public ActionResult Post(Models.v1_3.Bom bom)
+        public async Task<ActionResult> Post(Models.v1_3.Bom bom)
         {
             if (!_allowedMethods.Post) return StatusCode(403);
 
-            if (string.IsNullOrEmpty(bom.SerialNumber))
-            {
-                bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
-            }
+            if (string.IsNullOrEmpty(bom.SerialNumber)) bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
+            if (!ValidSerialNumber(bom.SerialNumber)) return BadRequest("Invalid BOM SerialNumber provided");
             
-            var fileName = Path.Combine(_repoOptions.Directory, bom.SerialNumber.Replace(':', '_'));
-
-            if (System.IO.File.Exists(fileName))
+            try
             {
-                return Conflict($"BOM with serial number {bom.SerialNumber} already exists.");
+                var result = await _repoService.Store(bom);
+                var routeValues = new {serialNumber = result.SerialNumber, version = result.Version};
+                return CreatedAtAction(nameof(Get), routeValues, "");
             }
-            else
+            catch (BomAlreadyExistsException e)
             {
-                using var fs = System.IO.File.Open(fileName, FileMode.CreateNew, FileAccess.Write);
-                Protobuf.Serializer.Serialize(fs, bom);
-                return CreatedAtRoute("bom", bom.SerialNumber, null);
+                return Conflict($"BOM with serial number {bom.SerialNumber} and version {bom.Version} already exists.");
             }
         }
         
         [HttpDelete]
-        public ActionResult Delete(string serialNumber)
+        public ActionResult Delete(string serialNumber, int? version)
         {
             if (!_allowedMethods.Delete) return StatusCode(403);
+            if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
 
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
 
-            var fileName = Path.Combine(_repoOptions.Directory, serialNumber.Replace(':', '_'));
-
-            System.IO.File.Delete(fileName);
+            if (version.HasValue)
+                _repoService.Delete(serialNumber, version.Value);
+            else
+                _repoService.DeleteAll(serialNumber);
 
             return Ok();
         }

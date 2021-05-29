@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -14,6 +15,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
 using CycloneDX.BomRepoServer.Formatters;
 using CycloneDX.BomRepoServer.Options;
+using CycloneDX.BomRepoServer.Services;
 using Microsoft.AspNetCore.Mvc.Formatters;
 
 namespace CycloneDX.BomRepoServer
@@ -59,7 +61,8 @@ namespace CycloneDX.BomRepoServer
 
             var repoOptions = new RepoOptions();
             Configuration.GetSection("Repo").Bind(repoOptions);
-            services.AddSingleton(repoOptions);
+            var repoService = new RepoService(new FileSystem(), repoOptions);
+            services.AddSingleton(repoService);
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

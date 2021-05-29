@@ -5,12 +5,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CycloneDX.Core" Version="2.1.0" />
+    <PackageReference Include="CycloneDX.Core" Version="2.2.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="5.6.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Repo" />
+    <PackageReference Include="System.IO.Abstractions" Version="13.2.33" />
   </ItemGroup>
 
 </Project>

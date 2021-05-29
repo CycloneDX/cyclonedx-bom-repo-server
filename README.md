@@ -2,7 +2,7 @@
 
 A BOM repository server for distributing CycloneDX BOMs.
 
-You can test it out locally by running (requires Docker):
+You can test it out locally with Docker by running:
 
 ```
 docker run cyclonedx/cyclonedx-bom-repo-server
@@ -17,17 +17,19 @@ The JSON endpoint is `/swagger/v1/swagger.json`. The UI can be accessed at
 
 A summary of the available endpoints and methods are below:
 
-| Path | HTTP Method | Description |
-| --- | --- | --- |
-| /bom | GET | Retrieves a specific BOM from the repository by specifying the `serialNumber` parameter. Supports HTTP content negotiation for all CycloneDX BOM formats and versions. |
-| /bom | POST | Adds a new BOM to the repository. Supports all CycloneDX BOM formats and versions. If the submitted BOM does not have an existing serial number one will be generated and returned in the response `Location` header. |
-| /bom | DELETE | Deletes a specific BOM from the repository by specifying the `serialNumber` parameter. |
+| Path | HTTP Method | Required Parameters | Optional Parameters | Description |
+| --- | --- | --- | --- | --- |
+| /bom | GET | `serialNumber` | `version` | If only the `serialNumber` parameter is supplied, retrieve the latest version of the BOM from the repository. If providing `serialNumber` and `version`, a specific version of the BOM will be retrieved. Supports HTTP content negotiation for all CycloneDX BOM formats and versions. |
+| /bom | POST | BOM content in request body and appropriate `Content-Type` header | | Adds a new BOM to the repository. Supports all CycloneDX BOM formats and versions. If the submitted BOM does not have a serial number, one will be generated. If the BOM does not have a version the next version number will be added. The response will contain an appropriate `Location` header to reference the BOM in the repository. |
+| /bom | DELETE | `serialNumber` | `version` | If only the `serialNumber` parameter is supplied, all versions of the BOM will be deleted from the repository. If `serialNumber` and `version` are supplied, only the specific version will be deleted from the repository. |
 
-NOTE: BOM serial numbers _should_ be unique for every generated BOM. Even
-when updating an existing BOM for the same software version. For this reason,
-updating an existing BOM is not supported. There is, of course, nothing to
-stop deleting an existing BOM and re-publishing it with the same serial number.
-But this is not recommended.
+NOTE:
+BOM serial numbers should be unique for a particular device/software version.
+When updating an existing BOM for the same software version the BOM serial number
+should remain the same and the version number should be incremented.
+For this reason, updating an existing BOM version is not supported.
+There is, of course, nothing to prevent deleting an existing BOM version and re-publishing
+it with the same serial number and version. But this is not recommended.
 
 ### Example cURL Usage
 
@@ -69,17 +71,33 @@ server or API gateway level.
 For simplicity of deployment the allowed methods can be configured, and
 default to safe options (everything is forbidden by default).
 
-It's recommended to deploy two instances of the BOM repository server.
-One, requiring authentication with GET, POST and DELETE methods permitted.
-And a second, public facing one, with only the GET method enabled. And
+It is recommended to deploy two instances of the BOM repository server.
+
+One, requiring authentication and additional security controls, with
+GET and POST methods permitted to support publishing BOMs.
+
+And a second instance, public facing, with only the GET method enabled. And
 authentication configured if required.
+
+More advanced authentication and authorization use cases should be handled
+with a solution like an API gateway. And are considered out of scope of
+this project.
+
+NOTE: It is recommended,
+subject to your operational environment and risk profile,
+to not require authentication for public facing instances.
+This enables downstream consumers,
+who might not have a direct commercial arrangement with your organization,
+to retrieve BOMs.
 
 ## System Requirements
 
 The CycloneDX BOM Repository Server has been designed as a lightweight BOM
 repository server. Any production web server should be capable of running it.
 
-All BOMs are converted to Protocol Buffer format before storage to minimize
-required disk space.
+However, there is an in memory cache of BOM metadata.
+Memory requirements will differ based on the amount of BOM metadata that requires caching.
+
+All BOMs are converted to Protocol Buffer format before storage for efficiency.
 
 .NET Core runtime dependencies are required.
