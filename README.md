@@ -2,10 +2,17 @@
 
 A BOM repository server for distributing CycloneDX BOMs.
 
-You can test it out locally with Docker by running:
+You can test it out locally using Docker by running:
 
 ```
-docker run cyclonedx/cyclonedx-bom-repo-server
+docker run --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:80 cyclonedx/cyclonedx-bom-repo-server
+```
+
+Or, if you would like to persist BOM repository storage between runs:
+
+```
+mkdir repo
+docker run --volume "$(pwd)/repo":/repo --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:80 cyclonedx/cyclonedx-bom-repo-server
 ```
 
 ## API Endpoints
@@ -25,8 +32,8 @@ A summary of the available endpoints and methods are below:
 
 NOTE:
 BOM serial numbers should be unique for a particular device/software version.
-When updating an existing BOM for the same software version the BOM serial number
-should remain the same and the version number should be incremented.
+When updating an existing BOM for the same software version, the BOM serial number
+should remain the same, and the version number should be incremented.
 For this reason, updating an existing BOM version is not supported.
 There is, of course, nothing to prevent deleting an existing BOM version and re-publishing
 it with the same serial number and version. But this is not recommended.
@@ -58,7 +65,7 @@ the following environment variables
 
 | Environment Variable Name | Supported Values | Description | Default Value |
 | --- | --- | --- | --- |
-| REPO__DIRECTORY | Any valid, existing, directory path | The directory BOMs are stored | `Repo` | 
+| REPO__DIRECTORY | Any valid directory path | The directory BOMs are stored | `Repo` | 
 | ALLOWEDMETHODS__GET | `true` or `false` | Allows or forbids BOM retrieval | `false` |
 | ALLOWEDMETHODS__POST | `true` or `false` | Allows or forbids BOM creation | `false` |
 | ALLOWEDMETHODS__DELETE | `true` or `false` | Allows or forbids BOM deletion | `false` |
@@ -92,12 +99,27 @@ to retrieve BOMs.
 
 ## System Requirements
 
-The CycloneDX BOM Repository Server has been designed as a lightweight BOM
-repository server. Any production web server should be capable of running it.
+The CycloneDX BOM Repository Server has been designed as a lightweight,
+high performance, BOM repository server.
+Any production web server should be capable of running it.
 
 However, there is an in memory cache of BOM metadata.
 Memory requirements will differ based on the amount of BOM metadata that requires caching.
 
 All BOMs are converted to Protocol Buffer format before storage for efficiency.
 
-.NET Core runtime dependencies are required.
+As an alternative to the Docker image,
+the server can be hosted using Nginx, Apache, IIS, or Kestrel.
+More information can be found in the
+[Web server implementations in ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/?view=aspnetcore-5.0&tabs=linux)
+documentation.
+
+## High Availability Deployments
+
+The server supports sharing repository storage between multiple
+frontend instances. Which can be used for full active/active
+high availability clustering.
+
+When deploying to multiple data centres it is recommended to have
+one master instance that supports publishing BOMs. And use data
+replication to any other target data centres used for distributing BOMs.

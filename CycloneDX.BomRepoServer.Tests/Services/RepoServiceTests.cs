@@ -1,6 +1,24 @@
+// This file is part of CycloneDX BOM Repository Server
+//
+// Licensed under the Apache License, Version 2.0 (the “License”);
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an “AS IS” BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) Patrick Dwyer. All Rights Reserved.
+
 using System;
 using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Controllers;
@@ -23,6 +41,41 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void ValidSerialNumberTest(string serialNumber, bool valid)
         {
             Assert.Equal(valid, BomController.ValidSerialNumber(serialNumber));            
+        }
+        
+        [Fact]
+        public async Task GetAllBomSerialNumbers_ReturnsAll()
+        {
+            var mfs = new MockFileSystem();
+            var options = new RepoOptions
+            {
+                Directory = "repo"
+            };
+            var service = new RepoService(mfs, options);
+            await service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
+            await service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
+            await service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
+
+            var retrievedSerialNumbers = service.GetAllBomSerialNumbers().ToList();
+            retrievedSerialNumbers.Sort();
+            
+            Assert.Collection(retrievedSerialNumbers, 
+                serialNumber => Assert.Equal("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", serialNumber),
+                serialNumber => Assert.Equal("urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79", serialNumber),
+                serialNumber => Assert.Equal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", serialNumber)
+            );
         }
         
         [Fact]

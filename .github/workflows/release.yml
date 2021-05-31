@@ -1,0 +1,97 @@
+# This workflow is used for publishing the binaries and Docker image.
+#
+# Before triggering a release the `semver.txt` file should be updated in the
+# relevant branch.
+#
+# When commiting the version change in `semver.txt` the commit message is
+# important as it will be used for the release in GitHub.
+#
+# For an example commit browse to
+# https://github.com/CycloneDX/cyclonedx-dotnet/commit/d110af854371374460430bb8438225a7d7a84274.
+# 
+# The resulting release is here
+# https://github.com/CycloneDX/cyclonedx-dotnet/releases/tag/v1.0.0.
+#
+# Releases are triggered manually. This can be done by browsing to
+# https://github.com/CycloneDX/cyclonedx-bom-repo-server/actions?query=workflow%3ARelease
+# and selecting "Run workflow". If releasing a patch for a previous version
+# make sure the correct branch is selected. It will default to the default
+# branch.
+name: Release
+
+on:
+  workflow_dispatch
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v2.3.4
+      - uses: actions/setup-dotnet@v1.8.0
+        with:
+          dotnet-version: '5.0.100-rc.2.20479.15'
+      # The tests should have already been run during the PR workflow, so this is really just a sanity check
+      - name: Tests
+        run: dotnet test
+
+      # Create binaries
+      - name: Create binaries
+        id: create_binaries
+        run: |
+          VERSION=`cat semver.txt`
+          echo "##[set-output name=version;]$VERSION"
+          REPO=cyclonedx/cyclonedx-bom-repo-server
+          dotnet build --configuration Release
+          mkdir bin
+          dotnet publish CycloneDX/CycloneDX.BomRepoServer.csproj --configuration Release /p:Version=$VERSION --output bin
+          done
+          docker build -f Dockerfile --build-arg VERSION=$VERSION -t $REPO:$VERSION -t $REPO:latest .
+
+      - name: Create release archives
+        id: create_release_archives
+        run: |
+          cd bin
+          zip -r ../CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip ./
+          tar -zcvf ../CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz ./
+
+#      - name: Publish Docker image to Docker Hub
+#        env:
+#          DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+#        run: |
+#          REPO=cyclonedx/cyclonedx-bom-repo-server
+#          docker login --username coderpatros --password "$DOCKER_TOKEN"
+#          docker push $REPO:latest
+#          docker push $REPO:${{ steps.create_binaries.outputs.version }}
+#
+      - name: Create github release and git tag for release
+        id: create_release
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          release_name: ${{ steps.create_binaries.outputs.version }}
+          tag_name: v${{ steps.create_binaries.outputs.version }}
+          draft: false
+          prerelease: false
+
+      - name: Upload zip archive to github release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip
+          asset_name: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload tar.gz archive to github release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz
+          asset_name: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz
+          asset_content_type: application/gzip
