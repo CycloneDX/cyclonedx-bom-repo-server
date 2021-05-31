@@ -21,7 +21,6 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.BomRepoServer.Options;
 using Microsoft.Extensions.Logging;
