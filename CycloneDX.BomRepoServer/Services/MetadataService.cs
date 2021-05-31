@@ -15,5 +15,28 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) Patrick Dwyer. All Rights Reserved.
     
-using System.Runtime.CompilerServices;
-[assembly: InternalsVisibleTo("CycloneDX.BomRepoServer.Tests")]
+using System;
+using System.Collections.Generic;
+using System.IO.Abstractions;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using CycloneDX.BomRepoServer.Exceptions;
+using CycloneDX.BomRepoServer.Options;
+using Microsoft.Extensions.Logging;
+
+namespace CycloneDX.BomRepoServer.Services
+{
+    public class MetadataService
+    {
+        private readonly RepoService _repoService;
+        private readonly ILogger _logger;
+
+        public MetadataService(RepoService repoService, ILogger logger = null)
+        {
+            _repoService = repoService;
+            _logger = logger;
+        }
+    }
+}

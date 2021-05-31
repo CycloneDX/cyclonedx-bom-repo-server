@@ -1,3 +1,20 @@
+// This file is part of CycloneDX BOM Repository Server
+//
+// Licensed under the Apache License, Version 2.0 (the “License”);
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an “AS IS” BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) Patrick Dwyer. All Rights Reserved.
+    
 //TODO need to make use of async methods once suitable methods have been added to the core library
 using System;
 using System.Collections.Generic;
@@ -135,14 +152,14 @@ namespace CycloneDX.BomRepoServer.Services
             var fileName = BomFilename(serialNumber, version);
             _fileSystem.File.Delete(BomFilename(serialNumber, version));
         }
-        
+
         private int? GetLatestVersion(string serialNumber)
         {
             var versions = GetAllVersions(serialNumber);
             return versions.LastOrDefault();
         }
 
-        private List<int> GetAllVersions(string serialNumber)
+        private IEnumerable<int> GetAllVersions(string serialNumber)
         {
             var directoryName = BomDirectory(serialNumber);
             var versions = new List<int>();
@@ -164,10 +181,29 @@ namespace CycloneDX.BomRepoServer.Services
             return versions;
         }
 
+        public IEnumerable<string> GetAllBomSerialNumbers()
+        {
+            if (_fileSystem.Directory.Exists(BomBaseDirectory()))
+            {
+                var dirnames = _fileSystem.Directory.GetDirectories(BomBaseDirectory());
+                foreach (var dirname in dirnames)
+                {
+                    var dirinfo = new System.IO.DirectoryInfo(dirname);
+                    if (dirinfo.Name.StartsWith("urn_uuid_"))
+                        yield return dirinfo.Name.Replace("_", ":");
+                }
+            }
+        }
+
+        private string BomBaseDirectory()
+        {
+            return _fileSystem.Path.Combine(_repoOptions.Directory, $"v{InternalStorageVersion}");
+        }
+
         private string BomDirectory(string serialNumber)
         {
             // replace : with _ for Windows file systems
-            return _fileSystem.Path.Combine(_repoOptions.Directory, $"v{InternalStorageVersion}", serialNumber.Replace(':', '_'));
+            return _fileSystem.Path.Combine(BomBaseDirectory(), serialNumber.Replace(':', '_'));
         }
 
         private string BomFilename(string serialNumber, int version)

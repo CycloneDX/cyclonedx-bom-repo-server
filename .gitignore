@@ -4,4 +4,4 @@
 bin/
 obj/
 *.user
-Repo/
+CycloneDX.BomRepoServer/Repo/
