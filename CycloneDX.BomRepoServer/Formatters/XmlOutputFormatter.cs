@@ -40,7 +40,7 @@ namespace CycloneDX.BomRepoServer.Formatters
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanWriteType(Type type) => type == typeof(Models.v1_3.Bom);
+        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
         {
@@ -53,25 +53,25 @@ namespace CycloneDX.BomRepoServer.Formatters
             }
             
             var response = context.HttpContext.Response;
-            var bom_v1_3 = context.Object as Models.v1_3.Bom;
+            var bom_v1_3 = context.Object as CycloneDX.Models.v1_3.Bom;
             string bomXml;
 
             if (version == SchemaVersion.v1_2)
             {
-                var bom_v1_2 = new Models.v1_2.Bom(bom_v1_3);
+                var bom_v1_2 = new CycloneDX.Models.v1_2.Bom(bom_v1_3);
                 bomXml = Xml.Serializer.Serialize(bom_v1_2);
             }
             else if (version == SchemaVersion.v1_1)
             {
-                var bom_v1_2 = new Models.v1_2.Bom(bom_v1_3);
-                var bom_v1_1 = new Models.v1_1.Bom(bom_v1_2);
+                var bom_v1_2 = new CycloneDX.Models.v1_2.Bom(bom_v1_3);
+                var bom_v1_1 = new CycloneDX.Models.v1_1.Bom(bom_v1_2);
                 bomXml = Xml.Serializer.Serialize(bom_v1_1);
             }
             else if (version == SchemaVersion.v1_0)
             {
-                var bom_v1_2 = new Models.v1_2.Bom(bom_v1_3);
-                var bom_v1_1 = new Models.v1_1.Bom(bom_v1_2);
-                var bom_v1_0 = new Models.v1_0.Bom(bom_v1_1);
+                var bom_v1_2 = new CycloneDX.Models.v1_2.Bom(bom_v1_3);
+                var bom_v1_1 = new CycloneDX.Models.v1_1.Bom(bom_v1_2);
+                var bom_v1_0 = new CycloneDX.Models.v1_0.Bom(bom_v1_1);
                 bomXml = Xml.Serializer.Serialize(bom_v1_0);
             }
             else

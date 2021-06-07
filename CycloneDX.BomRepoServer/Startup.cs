@@ -80,6 +80,12 @@ namespace CycloneDX.BomRepoServer
             Configuration.GetSection("Repo").Bind(repoOptions);
             var repoService = new RepoService(new FileSystem(), repoOptions);
             services.AddSingleton(repoService);
+            var bomCacheService = new BomCacheService(repoService);
+            services.AddSingleton(bomCacheService);
+            
+            bomCacheService.UpdateCache();
+
+            services.AddHostedService<BomCacheUpdateBackgroundService>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
