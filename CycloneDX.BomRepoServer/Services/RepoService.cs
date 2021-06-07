@@ -35,6 +35,8 @@ namespace CycloneDX.BomRepoServer.Services
     
     public class RepoService
     {
+        private const string InvalidFilePathSegmentCharacters = "<>:\"/\\|?*";
+
         // The InternalStorageVersion is to support future changes to the underlying storage mechanism
         private const int InternalStorageVersion = 1;
         private readonly StorageMetadata _metadata;
@@ -121,7 +123,7 @@ namespace CycloneDX.BomRepoServer.Services
                 }
             }
         
-            var directoryName = BomDirectory(bom.SerialNumber);
+            var directoryName = BomDirectory(bom.SerialNumber, bom.Version.Value);
             if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
         
             var fileName = BomFilename(bom.SerialNumber, bom.Version.Value);
@@ -143,7 +145,7 @@ namespace CycloneDX.BomRepoServer.Services
         
         public void DeleteAll(string serialNumber)
         {
-            var directoryName = BomDirectory(serialNumber);
+            var directoryName = BomInstanceBaseDirectory(serialNumber);
             _fileSystem.Directory.Delete(directoryName, recursive: true);
         }
         
@@ -161,23 +163,23 @@ namespace CycloneDX.BomRepoServer.Services
 
         private IEnumerable<int> GetAllVersions(string serialNumber)
         {
-            var directoryName = BomDirectory(serialNumber);
+            var instanceDirname = BomInstanceBaseDirectory(serialNumber);
             var versions = new List<int>();
-            
-            if (_fileSystem.Directory.Exists(directoryName))
+            if (_fileSystem.Directory.Exists(instanceDirname))
             {
-                var filenames = _fileSystem.Directory.GetFiles(directoryName);
-                foreach (var filename in filenames)
+                var dirnames = _fileSystem.Directory.GetDirectories(instanceDirname);
+                foreach (var dirname in dirnames)
                 {
+                    var dirinfo = new System.IO.DirectoryInfo(dirname);
+
                     int version;
-                    if (int.TryParse(_fileSystem.Path.GetFileName(filename), out version))
+                    if (int.TryParse(dirinfo.Name, out version))
                     {
                         versions.Add(version);
                     }
                 }
+                versions.Sort();
             }
-
-            versions.Sort();
             return versions;
         }
 
@@ -195,20 +197,45 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
+        private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)
+        {
+            // foreach (var c in InvalidFilePathSegmentCharacters)
+            // {
+            //     if (filePathSegment.Contains(c))
+            //         filePathSegment = filePathSegment.Replace(c, '_');
+            // }
+            //
+            // return filePathSegment;
+            
+            // The only invalid character possible is ":" in serial number
+            if (filePathSegment.Contains(':'))
+                return filePathSegment.Replace(':', '_');
+            else
+                return filePathSegment;
+        }
+
         private string BomBaseDirectory()
         {
             return _fileSystem.Path.Combine(_repoOptions.Directory, $"v{InternalStorageVersion}");
         }
 
-        private string BomDirectory(string serialNumber)
+        private string BomInstanceBaseDirectory(string serialNumber)
         {
-            // replace : with _ for Windows file systems
-            return _fileSystem.Path.Combine(BomBaseDirectory(), serialNumber.Replace(':', '_'));
+            return _fileSystem.Path.Combine(
+                BomBaseDirectory(),
+                ReplaceInvalidFilepathSegmentCharacters(serialNumber));
+        }
+
+        private string BomDirectory(string serialNumber, int version)
+        {
+            return _fileSystem.Path.Combine(
+                BomInstanceBaseDirectory(serialNumber),
+                version.ToString());
         }
 
         private string BomFilename(string serialNumber, int version)
         {
-            return _fileSystem.Path.Combine(BomDirectory(serialNumber), version.ToString());
+            return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), "bom.cdx");
         }
     }
 }
