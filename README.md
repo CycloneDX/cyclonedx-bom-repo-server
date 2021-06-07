@@ -29,6 +29,7 @@ A summary of the available endpoints and methods are below:
 | /bom | GET | `serialNumber` | `version` | If only the `serialNumber` parameter is supplied, retrieve the latest version of the BOM from the repository. If providing `serialNumber` and `version`, a specific version of the BOM will be retrieved. Supports HTTP content negotiation for all CycloneDX BOM formats and versions. |
 | /bom | POST | BOM content in request body and appropriate `Content-Type` header | | Adds a new BOM to the repository. Supports all CycloneDX BOM formats and versions. If the submitted BOM does not have a serial number, one will be generated. If the BOM does not have a version the next version number will be added. The response will contain an appropriate `Location` header to reference the BOM in the repository. |
 | /bom | DELETE | `serialNumber` | `version` | If only the `serialNumber` parameter is supplied, all versions of the BOM will be deleted from the repository. If `serialNumber` and `version` are supplied, only the specific version will be deleted from the repository. |
+| /search | GET | One of `group`, `name`, `version` | `group`, `name`, `version` | Retrieve a list of BOM serial numbers and versions that match the supplied metadata component search criteria. |
 
 NOTE:
 BOM serial numbers should be unique for a particular device/software version.
@@ -123,3 +124,11 @@ high availability clustering.
 When deploying to multiple data centres it is recommended to have
 one master instance that supports publishing BOMs. And use data
 replication to any other target data centres used for distributing BOMs.
+
+## BOM Metadata Cache & Searching
+
+To support high performance searching, there is an in memory cache of BOM metadata.
+
+This cache is initially populated during startup and updated by a background
+thread every 10 minutes. For this reason, a newly published BOM may not
+immediately be returned in search results.

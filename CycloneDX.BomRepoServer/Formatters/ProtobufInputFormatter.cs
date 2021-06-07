@@ -36,7 +36,7 @@ namespace CycloneDX.BomRepoServer.Formatters
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanReadType(Type type) => type == typeof(Models.v1_3.Bom);
+        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
         {

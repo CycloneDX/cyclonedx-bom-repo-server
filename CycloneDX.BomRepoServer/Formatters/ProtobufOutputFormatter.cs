@@ -31,12 +31,12 @@ namespace CycloneDX.BomRepoServer.Formatters
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.3"));
         }
 
-        protected override bool CanWriteType(Type type) => type == typeof(Models.v1_3.Bom);
+        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context)
         {
             var response = context.HttpContext.Response;
-            var bom_v1_3 = context.Object as Models.v1_3.Bom;
+            var bom_v1_3 = context.Object as CycloneDX.Models.v1_3.Bom;
 
             var bomProtobuf = Protobuf.Serializer.Serialize(bom_v1_3);
 

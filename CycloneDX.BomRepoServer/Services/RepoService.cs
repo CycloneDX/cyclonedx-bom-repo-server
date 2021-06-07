@@ -75,26 +75,26 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        public async Task<Models.v1_3.Bom> RetrieveLatest(string serialNumber)
+        public CycloneDX.Models.v1_3.Bom RetrieveLatest(string serialNumber)
         {
             var version = GetLatestVersion(serialNumber);
             if (!version.HasValue) return null;
 
-            return await Retrieve(serialNumber, version.Value);
+            return Retrieve(serialNumber, version.Value);
         }
 
-        public async Task<List<Models.v1_3.Bom>> RetrieveAll(string serialNumber)
+        public List<CycloneDX.Models.v1_3.Bom> RetrieveAll(string serialNumber)
         {
-            var boms = new List<Models.v1_3.Bom>();
+            var boms = new List<CycloneDX.Models.v1_3.Bom>();
             var versions = GetAllVersions(serialNumber);
             foreach (var version in versions)
             {
-                boms.Add(await Retrieve(serialNumber, version));
+                boms.Add(Retrieve(serialNumber, version));
             }
             return boms;
         }
 
-        public async Task<Models.v1_3.Bom> Retrieve(string serialNumber, int version)
+        public CycloneDX.Models.v1_3.Bom Retrieve(string serialNumber, int version)
         {
             var filename = BomFilename(serialNumber, version);
             if (!_fileSystem.File.Exists(filename)) return null;
@@ -104,7 +104,7 @@ namespace CycloneDX.BomRepoServer.Services
             return bom;
         }
         
-        public async Task<Models.v1_3.Bom> Store(Models.v1_3.Bom bom)
+        public CycloneDX.Models.v1_3.Bom Store(CycloneDX.Models.v1_3.Bom bom)
         {
             if (string.IsNullOrEmpty(bom.SerialNumber)) bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
             
@@ -131,7 +131,7 @@ namespace CycloneDX.BomRepoServer.Services
                 using var fs = _fileSystem.File.Open(fileName, System.IO.FileMode.CreateNew, System.IO.FileAccess.Write);
                 Protobuf.Serializer.Serialize(fs, bom);
             }
-            catch (System.IO.IOException e)
+            catch (System.IO.IOException)
             {
                 if (_fileSystem.File.Exists(fileName))
                     throw new BomAlreadyExistsException();

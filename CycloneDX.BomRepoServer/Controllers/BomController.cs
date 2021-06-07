@@ -16,12 +16,15 @@
 // Copyright (c) Patrick Dwyer. All Rights Reserved.
     
 using System;
+using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
+using JetBrains.Annotations;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Controllers
@@ -50,18 +53,18 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
         
         [HttpGet]
-        public async Task<ActionResult<Models.v1_3.Bom>> Get(string serialNumber, int? version)
+        public ActionResult<CycloneDX.Models.v1_3.Bom> Get(string serialNumber, int? version)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
             if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
                 
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
 
-            Models.v1_3.Bom result;
+            CycloneDX.Models.v1_3.Bom result;
             if (version.HasValue)
-                result = await _repoService.Retrieve(serialNumber, version.Value);
+                result = _repoService.Retrieve(serialNumber, version.Value);
             else
-                result = await _repoService.RetrieveLatest(serialNumber);
+                result = _repoService.RetrieveLatest(serialNumber);
 
             if (result == null) return NotFound();
             
@@ -69,7 +72,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult> Post(Models.v1_3.Bom bom)
+        public ActionResult Post(CycloneDX.Models.v1_3.Bom bom)
         {
             if (!_allowedMethods.Post) return StatusCode(403);
 
@@ -78,11 +81,11 @@ namespace CycloneDX.BomRepoServer.Controllers
             
             try
             {
-                var result = await _repoService.Store(bom);
+                var result = _repoService.Store(bom);
                 var routeValues = new {serialNumber = result.SerialNumber, version = result.Version};
                 return CreatedAtAction(nameof(Get), routeValues, "");
             }
-            catch (BomAlreadyExistsException e)
+            catch (BomAlreadyExistsException)
             {
                 return Conflict($"BOM with serial number {bom.SerialNumber} and version {bom.Version} already exists.");
             }

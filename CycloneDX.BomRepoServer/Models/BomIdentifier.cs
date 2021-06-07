@@ -14,28 +14,25 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) Patrick Dwyer. All Rights Reserved.
-    
+
 using System;
 using System.Collections.Generic;
-using System.IO.Abstractions;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-using CycloneDX.BomRepoServer.Exceptions;
-using CycloneDX.BomRepoServer.Options;
-using Microsoft.Extensions.Logging;
 
-namespace CycloneDX.BomRepoServer.Services
+namespace CycloneDX.BomRepoServer.Models
 {
-    public class MetadataService
+    public class BomIdentifier : IComparable<BomIdentifier>
     {
-        private readonly RepoService _repoService;
-        private readonly ILogger _logger;
+        public string SerialNumber { get; }
+        public int Version { get; }
 
-        public MetadataService(RepoService repoService, ILogger logger = null)
+        public BomIdentifier(string serialNumber, int version)
         {
-            _repoService = repoService;
-            _logger = logger;
+            SerialNumber = serialNumber;
+            Version = version;
         }
+
+        public int CompareTo(BomIdentifier other) => SerialNumber == other.SerialNumber
+            ? Version.CompareTo(other.Version)
+            : SerialNumber.CompareTo(other.SerialNumber);
     }
 }
