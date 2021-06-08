@@ -41,8 +41,6 @@ namespace CycloneDX.BomRepoServer.Formatters
             var bomProtobuf = Protobuf.Serializer.Serialize(bom_v1_3);
 
             await response.Body.WriteAsync(bomProtobuf);
-            
-            Protobuf.Serializer.Serialize(response.Body, bom_v1_3);
         }
     }
 }
