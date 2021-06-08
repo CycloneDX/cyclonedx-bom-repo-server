@@ -40,7 +40,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         private readonly RepoService _repoService;
         private readonly ILogger<BomController> _logger;
 
-        public BomController(AllowedMethodsOptions allowedMethods, RepoService repoService, ILogger<BomController> logger)
+        public BomController(AllowedMethodsOptions allowedMethods, RepoService repoService, ILogger<BomController> logger = null)
         {
             _allowedMethods = allowedMethods;
             _repoService = repoService;
