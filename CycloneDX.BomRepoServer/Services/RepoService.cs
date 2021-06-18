@@ -151,8 +151,7 @@ namespace CycloneDX.BomRepoServer.Services
         
         public void Delete(string serialNumber, int version)
         {
-            var fileName = BomFilename(serialNumber, version);
-            _fileSystem.File.Delete(BomFilename(serialNumber, version));
+            _fileSystem.Directory.Delete(BomDirectory(serialNumber, version), recursive: true);
         }
 
         private int? GetLatestVersion(string serialNumber)
@@ -161,19 +160,18 @@ namespace CycloneDX.BomRepoServer.Services
             return versions.LastOrDefault();
         }
 
-        private IEnumerable<int> GetAllVersions(string serialNumber)
+        public IEnumerable<int> GetAllVersions(string serialNumber)
         {
             var instanceDirname = BomInstanceBaseDirectory(serialNumber);
             var versions = new List<int>();
             if (_fileSystem.Directory.Exists(instanceDirname))
             {
-                var dirnames = _fileSystem.Directory.GetDirectories(instanceDirname);
-                foreach (var dirname in dirnames)
+                var dirNames = _fileSystem.Directory.GetDirectories(instanceDirname);
+                foreach (var dirname in dirNames)
                 {
-                    var dirinfo = new System.IO.DirectoryInfo(dirname);
+                    var dirInfo = new System.IO.DirectoryInfo(dirname);
 
-                    int version;
-                    if (int.TryParse(dirinfo.Name, out version))
+                    if (int.TryParse(dirInfo.Name, out int version))
                     {
                         versions.Add(version);
                     }
@@ -187,14 +185,19 @@ namespace CycloneDX.BomRepoServer.Services
         {
             if (_fileSystem.Directory.Exists(BomBaseDirectory()))
             {
-                var dirnames = _fileSystem.Directory.GetDirectories(BomBaseDirectory());
-                foreach (var dirname in dirnames)
+                var dirNames = _fileSystem.Directory.GetDirectories(BomBaseDirectory());
+                foreach (var dirname in dirNames)
                 {
-                    var dirinfo = new System.IO.DirectoryInfo(dirname);
-                    if (dirinfo.Name.StartsWith("urn_uuid_"))
-                        yield return dirinfo.Name.Replace("_", ":");
+                    var dirInfo = new System.IO.DirectoryInfo(dirname);
+                    if (dirInfo.Name.StartsWith("urn_uuid_"))
+                        yield return dirInfo.Name.Replace("_", ":");
                 }
             }
+        }
+
+        public DateTime GetBomAge(string serialNumber, int version)
+        {
+            return _fileSystem.File.GetCreationTimeUtc(BomFilename(serialNumber, version));
         }
 
         private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)
