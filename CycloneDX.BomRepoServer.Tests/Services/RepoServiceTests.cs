@@ -257,6 +257,36 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
+        public void Delete_DeletesBomsFromAllVersions()
+        {
+            var mfs = new MockFileSystem();
+            var options = new RepoOptions
+            {
+                Directory = "repo"
+            };
+            var service = new RepoService(mfs, options);
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                Version = 1,
+            };
+            service.Store(bom);
+            bom.Version = 2;
+            service.Store(bom);
+            
+            service.Delete(bom.SerialNumber, 1);
+
+            var bomVersions = service.GetAllVersions(bom.SerialNumber);
+            
+            Assert.Collection(bomVersions, 
+                bomVersion =>
+                {
+                    Assert.Equal(2, bomVersion);
+                }
+            );
+        }
+        
+        [Fact]
         public void DeleteAll_DeletesAllVersions()
         {
             var mfs = new MockFileSystem();

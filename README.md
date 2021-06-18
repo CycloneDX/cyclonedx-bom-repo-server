@@ -78,6 +78,8 @@ the following environment variables
 | ALLOWEDMETHODS__GET | `true` or `false` | Allows or forbids BOM retrieval | `false` |
 | ALLOWEDMETHODS__POST | `true` or `false` | Allows or forbids BOM creation | `false` |
 | ALLOWEDMETHODS__DELETE | `true` or `false` | Allows or forbids BOM deletion | `false` |
+| RETENTION__MAXBOMVERSIONS | Any integer value >= 0 | The maximum number of BOM versions that will be retained. If zero, the number of BOM versions are ignored for retention. | `0` |
+| RETENTION__MAXBOMAGE | Any integer value >= 0 | The maximum age of a BOM, in days, before it is removed. If zero, the BOM age is ignored for retention. | `0` |
 
 ## Authentication and Authorization
 
