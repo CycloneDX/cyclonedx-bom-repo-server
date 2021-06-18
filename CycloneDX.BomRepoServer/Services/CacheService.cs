@@ -26,7 +26,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Services
 {
-    public class BomCacheService
+    public class CacheService
     {
         // Internal utility class to minimise memory usage to elements that are actually used for searching
         private class BomSubset
@@ -58,7 +58,7 @@ namespace CycloneDX.BomRepoServer.Services
 
         private readonly Dictionary<ValueTuple<string, int>, BomSubset> _bomCache = new ();
 
-        public BomCacheService(RepoService repoService, ILogger logger = null)
+        public CacheService(RepoService repoService, ILogger logger = null)
         {
             _repoService = repoService;
             _logger = logger;

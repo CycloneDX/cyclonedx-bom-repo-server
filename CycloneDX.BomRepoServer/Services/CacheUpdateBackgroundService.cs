@@ -22,15 +22,15 @@ using Microsoft.Extensions.Hosting;
 
 namespace CycloneDX.BomRepoServer.Services
 {
-    public class BomRetentionBackgroundService : IHostedService
+    public class CacheUpdateBackgroundService : IHostedService
     {
         private Task _executingTask;
         private readonly CancellationTokenSource _stoppingCts = new CancellationTokenSource();
-        private readonly BomRetentionService _bomRetentionService;
+        private readonly CacheService _cacheService;
 
-        public BomRetentionBackgroundService(BomRetentionService bomRetentionService)
+        public CacheUpdateBackgroundService(CacheService cacheService)
         {
-            _bomRetentionService = bomRetentionService;
+            _cacheService = cacheService;
         }
  
         public Task StartAsync(CancellationToken cancellationToken)
@@ -58,9 +58,9 @@ namespace CycloneDX.BomRepoServer.Services
             do
             {
                 Console.WriteLine("Updating BOM cache...");
-                _bomRetentionService.ProcessRetention();
+                _cacheService.UpdateCache();
  
-                await Task.Delay(TimeSpan.FromMinutes(60), stoppingToken);
+                await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
             while (!stoppingToken.IsCancellationRequested);
         }

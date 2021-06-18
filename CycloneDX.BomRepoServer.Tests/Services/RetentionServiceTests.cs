@@ -30,7 +30,7 @@ using CycloneDX.Models.v1_3;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    public class BomRetentionServiceTests
+    public class RetentionServiceTests
     {
         [Fact]
         public void Retention_Removes_ExtraBomVersions()
@@ -58,7 +58,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             repoService.Store(bom);
             bom.Version = 3;
             repoService.Store(bom);
-            var service = new BomRetentionService(new RetentionOptions { MaxBomVersions = 2 }, repoService);
+            var service = new RetentionService(new RetentionOptions { MaxBomVersions = 2 }, repoService);
             
             service.ProcessRetention();
 
