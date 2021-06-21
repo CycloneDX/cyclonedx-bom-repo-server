@@ -57,11 +57,14 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         }
         
         [Theory]
+        [InlineData("text/xml", null)]
+        [InlineData("application/xml", null)]
         [InlineData("application/vnd.cyclonedx+xml", null)]
         [InlineData("application/vnd.cyclonedx+xml", "1.3")]
         [InlineData("application/vnd.cyclonedx+xml", "1.2")]
         [InlineData("application/vnd.cyclonedx+xml", "1.1")]
         [InlineData("application/vnd.cyclonedx+xml", "1.0")]
+        [InlineData("application/json", null)]
         [InlineData("application/vnd.cyclonedx+json", null)]
         [InlineData("application/vnd.cyclonedx+json", "1.3")]
         [InlineData("application/vnd.cyclonedx+json", "1.2")]
