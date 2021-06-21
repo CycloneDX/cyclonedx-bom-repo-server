@@ -24,6 +24,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Controllers;
@@ -113,6 +114,75 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 }
                 if (!versionParameterFound) Assert.Equal(version, null);
             }
+        }
+        
+        [Theory]
+        [InlineData("text/xml", null)]
+        [InlineData("application/xml", null)]
+        [InlineData("application/vnd.cyclonedx+xml", null)]
+        [InlineData("application/vnd.cyclonedx+xml", "1.3")]
+        [InlineData("application/vnd.cyclonedx+xml", "1.2")]
+        [InlineData("application/vnd.cyclonedx+xml", "1.1")]
+        [InlineData("application/vnd.cyclonedx+xml", "1.0")]
+        [InlineData("application/json", null)]
+        [InlineData("application/vnd.cyclonedx+json", null)]
+        [InlineData("application/vnd.cyclonedx+json", "1.3")]
+        [InlineData("application/vnd.cyclonedx+json", "1.2")]
+        [InlineData("application/x.vnd.cyclonedx+protobuf", null)]
+        [InlineData("application/x.vnd.cyclonedx+protobuf", "1.3")]
+        public async Task PostBom_StoresBom(string mediaType, string version)
+        {
+            using var tmpDirectory = new TempDirectory();
+
+            var options = new RepoOptions
+            {
+                Directory = tmpDirectory.DirectoryPath
+            };
+            var service = new RepoService(new FileSystem(), options);
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1
+            };
+
+            var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Post = true });
+
+            var contentType = mediaType;
+            if (version != null)
+                contentType += $"; version={version}";
+            var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
+
+            var result = new HttpResponseMessage();
+            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
+            
+            if (mediaType == MediaTypes.Protobuf || mediaType == "application/octet-stream")
+            {
+                var bomArray = Protobuf.Serializer.Serialize(bom);
+                request.Content = new ByteArrayContent(bomArray);
+                request.Content.Headers.ContentType = contentTypeHeader;
+            }
+            else
+            {
+                if (mediaType == MediaTypes.Xml || mediaType.EndsWith("xml"))
+                {
+                    request.Content = new StringContent(Xml.Serializer.Serialize(bom), Encoding.UTF8);
+                    request.Content.Headers.ContentType = contentTypeHeader;
+                }
+                else if (mediaType == MediaTypes.Json || mediaType.EndsWith("json"))
+                {
+                    request.Content = new StringContent(Json.Serializer.Serialize(bom), Encoding.UTF8);
+                    request.Content.Headers.ContentType = contentTypeHeader;
+                }
+            }
+
+            result = await client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Created, result.StatusCode);
+
+            var storedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            
+            Assert.Equal(bom.SerialNumber, storedBom.SerialNumber);
+            Assert.Equal(bom.Version, storedBom.Version);
         }
     }
 }
