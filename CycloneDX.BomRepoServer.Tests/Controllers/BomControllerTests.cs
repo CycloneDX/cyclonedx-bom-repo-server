@@ -152,7 +152,6 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 contentType += $"; version={version}";
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
 
-            var result = new HttpResponseMessage();
             var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
             
             if (mediaType == MediaTypes.Protobuf || mediaType == "application/octet-stream")
@@ -175,7 +174,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 }
             }
 
-            result = await client.SendAsync(request);
+            var result = await client.SendAsync(request);
 
             Assert.Equal(HttpStatusCode.Created, result.StatusCode);
 
@@ -183,6 +182,68 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             
             Assert.Equal(bom.SerialNumber, storedBom.SerialNumber);
             Assert.Equal(bom.Version, storedBom.Version);
+        }
+
+        [Theory]
+        [InlineData("xml")]
+        [InlineData("json")]
+        [InlineData("protobuf")]
+        public async Task PostBom_And_RetrieveOriginalBom(string format)
+        {
+            Assert.True(Format.TryParse(format, true, out Format parsedFormat));
+            using var tmpDirectory = new TempDirectory();
+
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
+            };
+
+            var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true, Post = true });
+
+            var contentType = MediaTypes.GetMediaType(parsedFormat);
+            var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
+
+            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
+            byte[] originalBomBytes = null;
+            string originalBomString = null;
+            
+            if (parsedFormat == Format.Protobuf)
+            {
+                originalBomBytes = Protobuf.Serializer.Serialize(bom);
+            }
+            else if (parsedFormat == Format.Xml)
+            {
+                originalBomString = Xml.Serializer.Serialize(bom);
+                originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);
+            }
+            else if (parsedFormat == Format.Json)
+            {
+                originalBomString = Json.Serializer.Serialize(bom);
+                originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);
+            }
+
+            request.Content = new ByteArrayContent(originalBomBytes);
+            request.Content.Headers.ContentType = contentTypeHeader;
+
+            var result = await client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.Created, result.StatusCode);
+
+            client.DefaultRequestHeaders.Add("Accept", contentType);
+            var response = await client.GetAsync(result.Headers.Location + "&original=true");
+            
+            Assert.Equal(contentType, response.Content.Headers.ContentType?.MediaType);
+
+            var retrievedOriginalBom = await response.Content.ReadAsByteArrayAsync();
+
+            if (originalBomString != null)
+            {
+                // For XML and JSON this will provide more useful output than the following assert
+                var retrievedOriginalBomString = Encoding.UTF8.GetString(retrievedOriginalBom);
+                Assert.Equal(originalBomString, retrievedOriginalBomString);
+            }
+
+            Assert.Equal(originalBomBytes, retrievedOriginalBom);
         }
     }
 }
