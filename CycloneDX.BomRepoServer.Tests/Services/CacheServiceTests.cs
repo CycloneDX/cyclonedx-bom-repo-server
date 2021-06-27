@@ -30,7 +30,7 @@ using CycloneDX.Models.v1_3;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    public class BomCacheServiceTests
+    public class CacheServiceTests
     {
         [Fact]
         public void SearchByGroupName_ReturnsAll()
@@ -89,7 +89,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            var service = new BomCacheService(repoService);
+            var service = new CacheService(repoService);
             service.UpdateCache();
 
             var bomIdentifiers = service.Search(group: "Test").ToList();
@@ -168,7 +168,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            var service = new BomCacheService(repoService);
+            var service = new CacheService(repoService);
             service.UpdateCache();
 
             var bomIdentifiers = service.Search(name: "Test").ToList();
@@ -247,7 +247,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            var service = new BomCacheService(repoService);
+            var service = new CacheService(repoService);
             service.UpdateCache();
 
             var bomIdentifiers = service.Search(version: "Test").ToList();
@@ -320,7 +320,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            var service = new BomCacheService(repoService);
+            var service = new CacheService(repoService);
             service.UpdateCache();
 
             var bomIdentifiers = service.Search("ACME", "Thing", "1").ToList();

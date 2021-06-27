@@ -32,6 +32,15 @@ namespace CycloneDX.BomRepoServer.Services
     {
         public int InternalStorageVersion { get; set; } 
     }
+
+    public class OriginalBom : IDisposable
+    {
+        public Format Format { get; set; }
+        public SchemaVersion SchemaVersion { get; set; }
+        public System.IO.Stream BomStream { get; set; }
+
+        public void Dispose() => BomStream.Dispose();
+    }
     
     public class RepoService
     {
@@ -77,14 +86,6 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        public CycloneDX.Models.v1_3.Bom RetrieveLatest(string serialNumber)
-        {
-            var version = GetLatestVersion(serialNumber);
-            if (!version.HasValue) return null;
-
-            return Retrieve(serialNumber, version.Value);
-        }
-
         public List<CycloneDX.Models.v1_3.Bom> RetrieveAll(string serialNumber)
         {
             var boms = new List<CycloneDX.Models.v1_3.Bom>();
@@ -96,9 +97,24 @@ namespace CycloneDX.BomRepoServer.Services
             return boms;
         }
 
-        public CycloneDX.Models.v1_3.Bom Retrieve(string serialNumber, int version)
+        public System.IO.Stream RetrieveStream(string serialNumber, int? version = null)
         {
-            var filename = BomFilename(serialNumber, version);
+            if (!version.HasValue) version = GetLatestVersion(serialNumber);
+            if (!version.HasValue) return null;
+            
+            var filename = BomFilename(serialNumber, version.Value);
+            if (!_fileSystem.File.Exists(filename)) return null;
+            
+            var fs = _fileSystem.FileStream.Create(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
+            return fs;
+        }
+
+        public CycloneDX.Models.v1_3.Bom Retrieve(string serialNumber, int? version = null)
+        {
+            if (!version.HasValue) version = GetLatestVersion(serialNumber);
+            if (!version.HasValue) return null;
+            
+            var filename = BomFilename(serialNumber, version.Value);
             if (!_fileSystem.File.Exists(filename)) return null;
             
             using var fs = _fileSystem.FileStream.Create(filename, System.IO.FileMode.Open, System.IO.FileAccess.Read);
@@ -141,6 +157,59 @@ namespace CycloneDX.BomRepoServer.Services
             }
 
             return bom;
+        }
+        
+        public async Task StoreOriginal(string serialNumber, int version, System.IO.Stream bomStream, Format format, SchemaVersion schemaVersion)
+        {
+            var directoryName = BomDirectory(serialNumber, version);
+            if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
+        
+            var fileName = OriginalBomFilename(serialNumber, version, format, schemaVersion);
+            
+            try
+            {
+                using var fs = _fileSystem.File.Open(fileName, System.IO.FileMode.CreateNew,
+                    System.IO.FileAccess.Write);
+                await bomStream.CopyToAsync(fs);
+            }
+            catch (System.IO.IOException)
+            {
+                if (_fileSystem.File.Exists(fileName))
+                    throw new BomAlreadyExistsException();
+                throw;
+            }
+        }
+        
+        public OriginalBom RetrieveOriginal(string serialNumber, int version)
+        {
+            var directoryName = BomDirectory(serialNumber, version);
+            if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
+
+            foreach (var file in _fileSystem.Directory.GetFiles(BomDirectory(serialNumber, version), "bom.*"))
+            {
+                if (!file.EndsWith(".cdx"))
+                {
+                    var baseFilename = _fileSystem.Path.GetFileName(file);
+                    var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
+                    var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
+                    
+                    var formatString = baseFilename.Substring(lastBreak + 1);
+                    var schemaVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
+
+                    if (Format.TryParse(formatString, true, out Format parsedFormat)
+                        && SchemaVersion.TryParse(schemaVersion, true, out SchemaVersion parsedSchemaVersion))
+                    {
+                        return new OriginalBom
+                        {
+                            Format = parsedFormat,
+                            SchemaVersion = parsedSchemaVersion,
+                            BomStream = _fileSystem.File.Open(file, System.IO.FileMode.Open, System.IO.FileAccess.Read)
+                        };
+                    }
+                }
+            }
+
+            return null;
         }
         
         public void DeleteAll(string serialNumber)
@@ -202,19 +271,8 @@ namespace CycloneDX.BomRepoServer.Services
 
         private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)
         {
-            // foreach (var c in InvalidFilePathSegmentCharacters)
-            // {
-            //     if (filePathSegment.Contains(c))
-            //         filePathSegment = filePathSegment.Replace(c, '_');
-            // }
-            //
-            // return filePathSegment;
-            
             // The only invalid character possible is ":" in serial number
-            if (filePathSegment.Contains(':'))
-                return filePathSegment.Replace(':', '_');
-            else
-                return filePathSegment;
+            return filePathSegment.Replace(':', '_');
         }
 
         private string BomBaseDirectory()
@@ -239,6 +297,11 @@ namespace CycloneDX.BomRepoServer.Services
         private string BomFilename(string serialNumber, int version)
         {
             return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), "bom.cdx");
+        }
+        
+        private string OriginalBomFilename(string serialNumber, int version, Format format, SchemaVersion schemaVersion)
+        {
+            return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), $"bom.{schemaVersion}.{format.ToString().ToLowerInvariant()}");
         }
     }
 }

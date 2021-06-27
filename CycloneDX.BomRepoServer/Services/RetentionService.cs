@@ -27,13 +27,13 @@ using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Services
 {
-    public class BomRetentionService
+    public class RetentionService
     {
         private readonly RetentionOptions _options;
         private readonly RepoService _repoService;
         private readonly ILogger _logger;
 
-        public BomRetentionService(RetentionOptions options, RepoService repoService, ILogger logger = null)
+        public RetentionService(RetentionOptions options, RepoService repoService, ILogger logger = null)
         {
             _options = options;
             _repoService = repoService;

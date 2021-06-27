@@ -127,7 +127,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             bom.Version = 3;
             service.Store(bom);
 
-            var retrievedBom = service.RetrieveLatest(bom.SerialNumber);
+            var retrievedBom = service.Retrieve(bom.SerialNumber);
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
@@ -154,6 +154,33 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
+        }
+        
+        [Theory]
+        [InlineData(Format.Xml)]
+        [InlineData(Format.Json)]
+        [InlineData(Format.Protobuf)]
+        public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
+        {
+            var mfs = new MockFileSystem();
+            var options = new RepoOptions
+            {
+                Directory = "repo"
+            };
+            var service = new RepoService(mfs, options);
+            var bom = new byte[] {32, 64, 128};
+            using var originalMS = new System.IO.MemoryStream(bom);
+
+            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SchemaVersion.v1_2);
+
+            using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
+            
+            Assert.Equal(format, result.Format);
+            Assert.Equal(SchemaVersion.v1_2, result.SchemaVersion);
+
+            using var resultMS = new System.IO.MemoryStream();
+            await result.BomStream.CopyToAsync(resultMS);
+            Assert.Equal(bom, resultMS.ToArray());
         }
         
         [Fact]

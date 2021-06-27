@@ -35,16 +35,16 @@ namespace CycloneDX.BomRepoServer.Controllers
     public class SearchController : ControllerBase
     {
         private readonly AllowedMethodsOptions _allowedMethods;
-        private readonly BomCacheService _bomCacheService;
+        private readonly CacheService _cacheService;
         private readonly ILogger<BomController> _logger;
 
         public SearchController(
             AllowedMethodsOptions allowedMethods,
-            BomCacheService bomCacheService,
+            CacheService cacheService,
             ILogger<BomController> logger)
         {
             _allowedMethods = allowedMethods;
-            _bomCacheService = bomCacheService;
+            _cacheService = cacheService;
             _logger = logger;
         }
 
@@ -59,7 +59,7 @@ namespace CycloneDX.BomRepoServer.Controllers
                 && version == null
             ) return BadRequest("Search requires group, name or version parameters to be specified.");
 
-            return new ObjectResult(_bomCacheService.Search(group, name, version));
+            return new ObjectResult(_cacheService.Search(group, name, version));
         }
     }
 }
