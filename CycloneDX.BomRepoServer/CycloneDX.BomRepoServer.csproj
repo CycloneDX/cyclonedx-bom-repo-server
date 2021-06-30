@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CycloneDX.Core" Version="2.3.0" />
+    <PackageReference Include="CycloneDX.Core" Version="2.3.1" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.4" />
     <PackageReference Include="System.IO.Abstractions" Version="13.2.38" />
   </ItemGroup>
