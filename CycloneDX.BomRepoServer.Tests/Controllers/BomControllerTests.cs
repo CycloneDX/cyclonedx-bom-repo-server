@@ -112,7 +112,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                         break;
                     }
                 }
-                if (!versionParameterFound) Assert.Equal(version, null);
+                Assert.True(versionParameterFound);
             }
         }
         
