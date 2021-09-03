@@ -147,7 +147,7 @@ namespace CycloneDX.BomRepoServer.Services
             try
             {
                 using var fs = _fileSystem.File.Open(fileName, System.IO.FileMode.CreateNew, System.IO.FileAccess.Write);
-                Protobuf.Serializer.Serialize(fs, bom);
+                Protobuf.Serializer.Serialize(bom, fs);
             }
             catch (System.IO.IOException)
             {
