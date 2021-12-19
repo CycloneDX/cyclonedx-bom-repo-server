@@ -22,7 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\CycloneDX.BomRepoServer\CycloneDX.BomRepoServer.csproj" />
+    <ProjectReference Include="..\..\src\CycloneDX.BomRepoServer\CycloneDX.BomRepoServer.csproj" />
   </ItemGroup>
 
 </Project>

@@ -81,20 +81,20 @@ namespace CycloneDX.BomRepoServer.Controllers
                 
                 foreach (var mediaTypeHeader in headers.Accept)
                 {
-                    bool schemaVersionSpecified = false;
-                    var parsedSchemaVersion = SchemaVersion.v1_3;
+                    bool specificationVersionSpecified = false;
+                    var parsedSpecificationVersion = SpecificationVersion.v1_3;
                     
                     foreach (var parameter in mediaTypeHeader.Parameters)
                     {
                         if (parameter.Name == "version")
                         {
-                            schemaVersionSpecified = true;
-                            SchemaVersion.TryParse($"v{parameter.Value.ToString().Replace('.', '_')}", true, out parsedSchemaVersion);
+                            specificationVersionSpecified = true;
+                            SpecificationVersion.TryParse($"v{parameter.Value.ToString().Replace('.', '_')}", true, out parsedSpecificationVersion);
                         }
                     }
 
                     if (mediaTypeHeader.MediaType == MediaTypes.GetMediaType(originalResult.Format)
-                        && (!schemaVersionSpecified || parsedSchemaVersion == originalResult.SchemaVersion))
+                        && (!specificationVersionSpecified || parsedSpecificationVersion == originalResult.SpecificationVersion))
                     {
                         return File(originalResult.BomStream, mediaTypeHeader.ToString());
                     }
@@ -102,7 +102,7 @@ namespace CycloneDX.BomRepoServer.Controllers
                 
                 return new ContentResult
                 {
-                    Content = $"Unacceptable content media types requested. Valid option for this original BOM is {MediaTypes.GetMediaType(originalResult.Format)} or {MediaTypes.GetMediaType(originalResult.Format, originalResult.SchemaVersion)}",
+                    Content = $"Unacceptable content media types requested. Valid option for this original BOM is {MediaTypes.GetMediaType(originalResult.Format)} or {MediaTypes.GetMediaType(originalResult.Format, originalResult.SpecificationVersion)}",
                     ContentType = "text/plain",
                     StatusCode = 406
                 };
@@ -120,12 +120,12 @@ namespace CycloneDX.BomRepoServer.Controllers
             if (!_allowedMethods.Post) return StatusCode(403);
 
             var contentType = new ContentType(Request.Headers["Content-Type"].ToString());
-            var schemaVersion = SchemaVersion.v1_3;
+            var specificationVersion = SpecificationVersion.v1_3;
 
             if (contentType.Parameters?.ContainsKey("version") == true)
             {
-                if (!Enum.TryParse<SchemaVersion>("v" + contentType.Parameters["version"].Replace('.', '_'),
-                    out schemaVersion))
+                if (!Enum.TryParse<SpecificationVersion>("v" + contentType.Parameters["version"].Replace('.', '_'),
+                    out specificationVersion))
                 {
                     return BadRequest(
                         $"Unable to parse schema version in Content-Type header: {Request.Headers["Content-Type"]}");
@@ -183,7 +183,7 @@ namespace CycloneDX.BomRepoServer.Controllers
             {
                 originalBomStream.Position = 0;
                 var result = _repoService.Store(bom);
-                await _repoService.StoreOriginal(bom.SerialNumber, bom.Version.Value, originalBomStream, format, schemaVersion);
+                await _repoService.StoreOriginal(bom.SerialNumber, bom.Version.Value, originalBomStream, format, specificationVersion);
                 var routeValues = new {serialNumber = result.SerialNumber, version = result.Version};
                 return CreatedAtAction(nameof(Get), routeValues, "");
             }
