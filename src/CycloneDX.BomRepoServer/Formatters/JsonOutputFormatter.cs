@@ -43,17 +43,17 @@ namespace CycloneDX.BomRepoServer.Formatters
         {
             var contentType = new ContentType(context.ContentType.ToString());
             
-            var version = SchemaVersion.v1_3;
+            var version = SpecificationVersion.v1_3;
             if (contentType.Parameters?.ContainsKey("version") == true)
             {
-                version = Enum.Parse<SchemaVersion>("v" + contentType.Parameters["version"].Replace('.', '_'));
+                version = Enum.Parse<SpecificationVersion>("v" + contentType.Parameters["version"].Replace('.', '_'));
             }
             
             var response = context.HttpContext.Response;
             var bom_v1_3 = context.Object as CycloneDX.Models.v1_3.Bom;
             string bomJson;
 
-            if (version == SchemaVersion.v1_2)
+            if (version == SpecificationVersion.v1_2)
             {
                 var bom_v1_2 = new CycloneDX.Models.v1_2.Bom(bom_v1_3);
                 bomJson = Json.Serializer.Serialize(bom_v1_2);

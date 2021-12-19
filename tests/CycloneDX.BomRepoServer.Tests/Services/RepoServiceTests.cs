@@ -171,12 +171,12 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
-            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SchemaVersion.v1_2);
+            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
 
             using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
             
             Assert.Equal(format, result.Format);
-            Assert.Equal(SchemaVersion.v1_2, result.SchemaVersion);
+            Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
 
             using var resultMS = new System.IO.MemoryStream();
             await result.BomStream.CopyToAsync(resultMS);
