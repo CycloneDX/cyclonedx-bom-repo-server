@@ -6,7 +6,7 @@ on: [pull_request, workflow_dispatch]
 jobs:
   # Fail if there are any failed tests
   #
-  # We support .NET 5.0 on Windows, Mac and Linux.
+  # We support .NET 6.0 on Windows, Mac and Linux.
   #
   # To check for failing tests locally run `dotnet test`.
   test:
@@ -21,9 +21,9 @@ jobs:
     - uses: actions/checkout@v2.4.0
     - uses: actions/setup-dotnet@v1.9.0
       with:
-        dotnet-version: '5.0.100-rc.2.20479.15'
+        dotnet-version: '6.0'
 
     - name: Tests
       run: |
         dotnet restore
-        dotnet test --framework net5.0
+        dotnet test
