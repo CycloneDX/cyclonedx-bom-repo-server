@@ -45,7 +45,7 @@ jobs:
           REPO=cyclonedx/cyclonedx-bom-repo-server
           dotnet build --configuration Release
           mkdir bin
-          dotnet publish CycloneDX.BomRepoServer/CycloneDX.BomRepoServer.csproj --configuration Release /p:Version=$VERSION --output bin
+          dotnet publish src/CycloneDX.BomRepoServer/CycloneDX.BomRepoServer.csproj --configuration Release /p:Version=$VERSION --output bin
           docker build -f Dockerfile --build-arg VERSION=$VERSION -t $REPO:$VERSION -t $REPO:latest .
 
       - name: Create release archives
