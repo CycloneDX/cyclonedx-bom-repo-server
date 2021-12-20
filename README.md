@@ -122,7 +122,7 @@ All BOMs are converted to Protocol Buffer format before storage for efficiency.
 As an alternative to the Docker image,
 the server can be hosted using Nginx, Apache, IIS, or Kestrel.
 More information can be found in the
-[Web server implementations in ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/?view=aspnetcore-5.0&tabs=linux)
+[Web server implementations in ASP.NET Core](https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/?view=aspnetcore-6.0&tabs=linux)
 documentation.
 
 ## High Availability Deployments
