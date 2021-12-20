@@ -1,7 +1,9 @@
 # For details of what checks are run for PRs please refer below
-name: .NET Core CI
+name: .NET CI
 
-on: [pull_request, workflow_dispatch]
+on:
+  pull_request:
+  workflow_dispatch:
 
 jobs:
   # Fail if there are any failed tests
@@ -10,20 +12,27 @@ jobs:
   #
   # To check for failing tests locally run `dotnet test`.
   test:
-    name: Tests for .NET ${{ matrix.framework }} on ${{ matrix.os }}
+    name: Tests for .NET 6.0 on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
     timeout-minutes: 30
-    
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
     steps:
-    - uses: actions/checkout@v2.4.0
-    - uses: actions/setup-dotnet@v1.9.0
+    - name: Checkout repository
+      uses: actions/checkout@v2.4.0
+
+    - name: Set up .Net
+      uses: actions/setup-dotnet@v1.9.0
       with:
         dotnet-version: '6.0'
 
-    - name: Tests
-      run: |
+    - name: Run tests
+      run: |-
         dotnet restore
-        dotnet test
+        dotnet test --nologo --no-restore --configuration Release --verbosity normal
