@@ -17,8 +17,8 @@
     
 namespace CycloneDX.BomRepoServer.Options
 {
-    public class RepoOptions
+    public class FileSystemRepoOptions
     {
-        public string StorageType { get; set; }
+        public string Directory { get; set; }
     }
 }

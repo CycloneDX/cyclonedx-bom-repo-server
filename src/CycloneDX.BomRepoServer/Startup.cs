@@ -78,8 +78,16 @@ namespace CycloneDX.BomRepoServer
 
             var repoOptions = new RepoOptions();
             Configuration.GetSection("Repo").Bind(repoOptions);
-            var repoService = new FileSystemRepoService(new FileSystem(), repoOptions);
-            services.AddSingleton(repoService);
+            IRepoService repoService;
+            if(repoOptions.StorageType.Equals("FileSystem")) {
+                var fileSystemRepoOptions = new FileSystemRepoOptions();
+                Configuration.GetSection("Repo:Options").Bind(fileSystemRepoOptions);
+                repoService = new FileSystemRepoService(new FileSystem(), fileSystemRepoOptions);
+            } else {
+                throw new InvalidOperationException("Missing or unsupported storage type"); // TODO Validation filter https://andrewlock.net/adding-validation-to-strongly-typed-configuration-objects-in-asp-net-core/
+            }
+            
+            services.AddSingleton<IRepoService>(repoService);
             
             var bomCacheService = new CacheService(repoService);
             services.AddSingleton(bomCacheService);

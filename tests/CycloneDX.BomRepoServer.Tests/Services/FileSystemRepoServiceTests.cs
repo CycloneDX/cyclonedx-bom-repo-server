@@ -47,7 +47,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void GetAllBomSerialNumbers_ReturnsAll()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -82,7 +82,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void RetrieveAll_ReturnsAllVersions()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -111,7 +111,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void RetrieveLatest_ReturnsLatestVersion()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -137,7 +137,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void StoreBom_StoresSpecificVersion()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -163,7 +163,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -187,7 +187,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void StoreClashingBomVersion_ThrowsException()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -207,7 +207,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void StoreBomWithoutVersion_SetsVersion()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -231,7 +231,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -260,7 +260,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void Delete_DeletesSpecificVersion()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -287,7 +287,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void Delete_DeletesBomsFromAllVersions()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -317,7 +317,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void DeleteAll_DeletesAllVersions()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
