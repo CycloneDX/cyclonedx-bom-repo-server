@@ -30,7 +30,7 @@ using CycloneDX.Models.v1_3;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    public class RepoServiceTests
+    public class FileSystemRepoServiceTests
     {
         [Theory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
@@ -51,7 +51,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             service.Store(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -86,7 +86,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -115,7 +115,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -141,7 +141,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -167,7 +167,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
@@ -191,7 +191,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -211,7 +211,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid()
@@ -235,7 +235,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -264,7 +264,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -291,7 +291,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -321,7 +321,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var service = new RepoService(mfs, options);
+            var service = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),

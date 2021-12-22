@@ -42,7 +42,7 @@ namespace CycloneDX.BomRepoServer.Services
         public void Dispose() => BomStream.Dispose();
     }
 
-    public class RepoService : IRepoService
+    public class FileSystemRepoService : IRepoService
     {
         private const string InvalidFilePathSegmentCharacters = "<>:\"/\\|?*";
 
@@ -53,7 +53,7 @@ namespace CycloneDX.BomRepoServer.Services
         private readonly RepoOptions _repoOptions;
         private readonly ILogger _logger;
 
-        public RepoService(IFileSystem fileSystem, RepoOptions repoOptions, ILogger logger = null)
+        public FileSystemRepoService(IFileSystem fileSystem, RepoOptions repoOptions, ILogger logger = null)
         {
             _fileSystem = fileSystem;
             _repoOptions = repoOptions;

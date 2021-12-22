@@ -30,10 +30,10 @@ namespace CycloneDX.BomRepoServer.Services
     public class RetentionService
     {
         private readonly RetentionOptions _options;
-        private readonly RepoService _repoService;
+        private readonly FileSystemRepoService _repoService;
         private readonly ILogger _logger;
 
-        public RetentionService(RetentionOptions options, RepoService repoService, ILogger logger = null)
+        public RetentionService(RetentionOptions options, FileSystemRepoService repoService, ILogger logger = null)
         {
             _options = options;
             _repoService = repoService;

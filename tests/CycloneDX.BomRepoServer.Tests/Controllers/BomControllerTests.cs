@@ -79,7 +79,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             {
                 Directory = tmpDirectory.DirectoryPath
             };
-            var service = new RepoService(new FileSystem(), options);
+            var service = new FileSystemRepoService(new FileSystem(), options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -138,7 +138,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             {
                 Directory = tmpDirectory.DirectoryPath
             };
-            var service = new RepoService(new FileSystem(), options);
+            var service = new FileSystemRepoService(new FileSystem(), options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",

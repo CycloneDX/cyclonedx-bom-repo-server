@@ -46,10 +46,10 @@ namespace CycloneDX.BomRepoServer.Controllers
             @"^(urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}))$");
 
         private readonly AllowedMethodsOptions _allowedMethods;
-        private readonly RepoService _repoService;
+        private readonly FileSystemRepoService _repoService;
         private readonly ILogger<BomController> _logger;
 
-        public BomController(AllowedMethodsOptions allowedMethods, RepoService repoService, ILogger<BomController> logger = null)
+        public BomController(AllowedMethodsOptions allowedMethods, FileSystemRepoService repoService, ILogger<BomController> logger = null)
         {
             _allowedMethods = allowedMethods;
             _repoService = repoService;
