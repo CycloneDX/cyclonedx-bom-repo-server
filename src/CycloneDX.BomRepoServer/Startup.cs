@@ -78,7 +78,7 @@ namespace CycloneDX.BomRepoServer
 
             var repoOptions = new RepoOptions();
             Configuration.GetSection("Repo").Bind(repoOptions);
-            var repoService = new RepoService(new FileSystem(), repoOptions);
+            var repoService = new FileSystemRepoService(new FileSystem(), repoOptions);
             services.AddSingleton(repoService);
             
             var bomCacheService = new CacheService(repoService);

@@ -53,12 +53,12 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        private readonly RepoService _repoService;
+        private readonly FileSystemRepoService _repoService;
         private readonly ILogger _logger;
 
         private readonly Dictionary<ValueTuple<string, int>, BomSubset> _bomCache = new ();
 
-        public CacheService(RepoService repoService, ILogger logger = null)
+        public CacheService(FileSystemRepoService repoService, ILogger logger = null)
         {
             _repoService = repoService;
             _logger = logger;

@@ -40,7 +40,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 Directory = "repo"
             };
-            var repoService = new RepoService(mfs, options);
+            var repoService = new FileSystemRepoService(mfs, options);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
