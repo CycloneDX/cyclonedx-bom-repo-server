@@ -36,7 +36,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void SearchByGroupName_ReturnsAll()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -115,7 +115,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void SearchByName_ReturnsAll()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -194,7 +194,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void SearchByVersion_ReturnsAll()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };
@@ -273,7 +273,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void CompositeSearch_ReturnsSingle()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };

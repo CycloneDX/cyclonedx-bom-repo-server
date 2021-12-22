@@ -49,7 +49,8 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                     configBuilder.AddInMemoryCollection(
                         new Dictionary<string, string>
                         {
-                            { "Repo:Directory", repoDirectory },
+                            { "Repo:StorageType", "FileSystem" },
+                            { "Repo:Options:Directory", repoDirectory },
                             { "AllowedMethods:Get", allowedMethods.Get ? "true" : "false" },
                         });
                 });
@@ -75,7 +76,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         {
             using var tmpDirectory = new TempDirectory();
 
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = tmpDirectory.DirectoryPath
             };
@@ -134,7 +135,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         {
             using var tmpDirectory = new TempDirectory();
 
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = tmpDirectory.DirectoryPath
             };

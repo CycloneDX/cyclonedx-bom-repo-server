@@ -36,7 +36,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         public void Retention_Removes_ExtraBomVersions()
         {
             var mfs = new MockFileSystem();
-            var options = new RepoOptions
+            var options = new FileSystemRepoOptions
             {
                 Directory = "repo"
             };

@@ -50,10 +50,10 @@ namespace CycloneDX.BomRepoServer.Services
         private const int InternalStorageVersion = 1;
         private readonly StorageMetadata _metadata;
         private readonly IFileSystem _fileSystem;
-        private readonly RepoOptions _repoOptions;
+        private readonly FileSystemRepoOptions _repoOptions;
         private readonly ILogger _logger;
 
-        public FileSystemRepoService(IFileSystem fileSystem, RepoOptions repoOptions, ILogger logger = null)
+        public FileSystemRepoService(IFileSystem fileSystem, FileSystemRepoOptions repoOptions, ILogger logger = null)
         {
             _fileSystem = fileSystem;
             _repoOptions = repoOptions;
