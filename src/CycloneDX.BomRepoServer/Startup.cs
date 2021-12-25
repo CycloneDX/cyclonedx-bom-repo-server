@@ -34,6 +34,8 @@ using CycloneDX.BomRepoServer.Formatters;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
 using Microsoft.AspNetCore.Mvc.Formatters;
+using Amazon.S3;
+using Amazon;
 
 namespace CycloneDX.BomRepoServer
 {
@@ -83,6 +85,16 @@ namespace CycloneDX.BomRepoServer
                 var fileSystemRepoOptions = new FileSystemRepoOptions();
                 Configuration.GetSection("Repo:Options").Bind(fileSystemRepoOptions);
                 repoService = new FileSystemRepoService(new FileSystem(), fileSystemRepoOptions);
+            } else if (repoOptions.StorageType.Equals("S3")) {
+                var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin"); 
+                var s3Config = new AmazonS3Config
+                {
+                    AuthenticationRegion = RegionEndpoint.USEast1.SystemName, // Should match the `MINIO_REGION` environment variable.
+                    ServiceURL = "http://localhost:9000", // replace http://localhost:9000 with URL of your MinIO server
+                    ForcePathStyle = true // MUST be true to work correctly with MinIO server
+                };
+                var s3Client = new AmazonS3Client(awsCredentials, s3Config);
+                repoService = new S3RepoService(s3Client);
             } else {
                 throw new InvalidOperationException("Missing or unsupported storage type"); // TODO Validation filter https://andrewlock.net/adding-validation-to-strongly-typed-configuration-objects-in-asp-net-core/
             }
