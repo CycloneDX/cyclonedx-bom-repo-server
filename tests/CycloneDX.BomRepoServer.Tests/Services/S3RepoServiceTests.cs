@@ -35,16 +35,16 @@ using System.Threading;
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
     // Async enumerator for unit testing
-    internal class TestPaginatedEnumerable : IPaginatedEnumerable<S3Object>
+    internal class TestPaginatedEnumerable<T> : IPaginatedEnumerable<T>
     {
-        private readonly IAsyncEnumerable<S3Object> _inner;
+        private readonly IAsyncEnumerable<T> _inner;
 
-        public TestPaginatedEnumerable(IEnumerable<S3Object> enumerator)
+        public TestPaginatedEnumerable(IEnumerable<T> enumerator)
         {
             _inner = enumerator.ToAsyncEnumerable();
         }
 
-        public IAsyncEnumerator<S3Object> GetAsyncEnumerator(CancellationToken cancellationToken = default)
+        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             return _inner.GetAsyncEnumerator();
         }
@@ -82,7 +82,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
                 .Returns(() => {
                     var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
-                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable(mockObjects));
+                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
                     return mockPaginatedResult.Object;
                 });
             
@@ -101,18 +101,33 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void RetrieveAll_ReturnsAllVersions()
         {
-            var service = new S3RepoService(null);
+            var mockS3Client = new Mock<IAmazonS3>();
+            var mockObjects = new List<S3Object>() {
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/1/bom.cdx"
+                },
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx"
+                },
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/bom.cdx"
+                },
+            };
+
+            mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
+                .Returns(() => {
+                    var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
+                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
+                    return mockPaginatedResult.Object;
+                });
+            
+            var service = new S3RepoService(mockS3Client.Object);
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             };
-            service.Store(bom);
-            bom.Version = 2;
-            service.Store(bom);
-            bom.Version = 3;
-            service.Store(bom);
-
+            
             var retrievedBoms = service.RetrieveAll(bom.SerialNumber);
             
             Assert.Collection(retrievedBoms, 
