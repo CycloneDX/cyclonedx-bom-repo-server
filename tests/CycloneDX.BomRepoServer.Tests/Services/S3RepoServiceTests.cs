@@ -31,6 +31,7 @@ using Amazon.S3.Model;
 using System.Collections.Generic;
 using Amazon.Runtime;
 using System.Threading;
+using System.IO;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
@@ -140,18 +141,49 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void RetrieveLatest_ReturnsLatestVersion()
         {
-            var service = new S3RepoService(null);
+            var mockS3Client = new Mock<IAmazonS3>();
+            var mockObjects = new List<S3Object>() {
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/1/bom.cdx",
+                },
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx"
+                },
+                new S3Object() {
+                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/bom.cdx"
+                },
+            };
+
+            mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
+                .Returns(() => {
+                    var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
+                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
+                    return mockPaginatedResult.Object;
+                });
+            mockS3Client.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(match => match.Key.Contains("urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/")), It.IsAny<CancellationToken>()))
+                .Returns(() => {
+                    var stream = new MemoryStream();
+                    var bom = new Bom() {
+                        SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                        Version = 3
+                    };
+                    Protobuf.Serializer.Serialize(bom, stream);
+                    stream.Seek(0, SeekOrigin.Begin);
+                    var result = new GetObjectResponse() {
+                        ResponseStream = stream
+                    };
+
+                    return Task.FromResult(result);
+                });
+            
+            var service = new S3RepoService(mockS3Client.Object);
+
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
-                Version = 1,
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 3
             };
-            service.Store(bom);
-            bom.Version = 2;
-            service.Store(bom);
-            bom.Version = 3;
-            service.Store(bom);
-
+            
             var retrievedBom = service.Retrieve(bom.SerialNumber);
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
@@ -161,21 +193,23 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void StoreBom_StoresSpecificVersion()
         {
-            var service = new S3RepoService(null);
+            var mockS3Client = new Mock<IAmazonS3>();
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 2,
             };
-
+            mockS3Client.Setup(x => x.PutObjectAsync(It.Is<PutObjectRequest>(match => match.Key.EndsWith("3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx")), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new PutObjectResponse()));
+            var service = new S3RepoService(mockS3Client.Object);
+            
             service.Store(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
-            
-            Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
-            Assert.Equal(retrievedBom.Version, bom.Version);
+            mockS3Client.VerifyAll();
         }
         
+        // TODO This is probably a better fit in the controller test(s) 
+        /*
         [Theory]
         [InlineData(Format.Xml)]
         [InlineData(Format.Json)]
@@ -196,8 +230,40 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             using var resultMS = new System.IO.MemoryStream();
             await result.BomStream.CopyToAsync(resultMS);
             Assert.Equal(bom, resultMS.ToArray());
-        }
+        }*/
         
+        [Theory]
+        [InlineData(Format.Xml)]
+        [InlineData(Format.Json)]
+        [InlineData(Format.Protobuf)]
+        public async void StoreOriginalBom_WritesToStorage(Format format) {
+            var mockS3Client = new Mock<IAmazonS3>();
+            var filenameWithFormat = $"bom.{SpecificationVersion.v1_2}.{format.ToString().ToLowerInvariant()}";
+            mockS3Client.Setup(x => x.PutObjectAsync(It.Is<PutObjectRequest>(match => match.Key.EndsWith($"5e671687-395b-41f5-a30f-a58921a69b79/1/{filenameWithFormat}")), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new PutObjectResponse()));
+            var service = new S3RepoService(mockS3Client.Object);
+            var bom = new byte[] {32, 64, 128};
+            using var originalMS = new System.IO.MemoryStream(bom);
+
+            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
+            mockS3Client.VerifyAll();
+        }
+
+        [Theory]
+        [InlineData(Format.Xml)]
+        [InlineData(Format.Json)]
+        [InlineData(Format.Protobuf)]
+        public void RetrieveOriginal_ReadsFromStorage(Format format) {
+            var mockS3Client = new Mock<IAmazonS3>();
+            var filenameWithFormat = $"bom.{SpecificationVersion.v1_2}.{format.ToString().ToLowerInvariant()}";
+            mockS3Client.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(match => match.Key.EndsWith($"5e671687-395b-41f5-a30f-a58921a69b79/1/{filenameWithFormat}")), It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new GetObjectResponse()));
+            var service = new S3RepoService(mockS3Client.Object);
+
+            using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
+            mockS3Client.VerifyAll();
+        }
+
         [Fact]
         public void StoreClashingBomVersion_ThrowsException()
         {
