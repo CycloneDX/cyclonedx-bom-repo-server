@@ -91,10 +91,14 @@ namespace CycloneDX.BomRepoServer.Services
                 .ListObjectsV2(new ListObjectsV2Request{
                     BucketName = this._bucketName,
                     Prefix = instanceDirname,
+
                 })
-                .CommonPrefixes
-                .Select((commonPrefix) => {
-                    int.TryParse(commonPrefix, out int result);
+                .S3Objects
+                .Where((s3Object) => s3Object.Key.EndsWith("bom.cdx"))
+                .Select((s3Object) => {
+                    // TODO There are probably better ways to do this
+                    var segments = s3Object.Key.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                    int.TryParse(segments[^2], out int result);
                     return result;
                 })
                 .ToEnumerable();
@@ -108,12 +112,30 @@ namespace CycloneDX.BomRepoServer.Services
 
         public Bom Retrieve(string serialNumber, int? version = null)
         {
-            throw new NotImplementedException();
+            if (!version.HasValue) version = GetLatestVersion(serialNumber);
+            if (!version.HasValue) return null;
+
+            var filename = BomFilename(serialNumber, version.Value);
+            var response = this._s3Client.GetObjectAsync(new GetObjectRequest() {
+                BucketName = this._bucketName,
+                Key = filename,
+
+            });
+            var result = response.GetAwaiter().GetResult();
+            using var responseStream = result.ResponseStream;
+            var bom = Protobuf.Deserializer.Deserialize(responseStream);
+            return bom;
         }
 
         public List<Bom> RetrieveAll(string serialNumber)
         {
-            throw new NotImplementedException();
+            var boms = new List<CycloneDX.Models.v1_3.Bom>();
+            var versions = GetAllVersions(serialNumber);
+            foreach (var version in versions)
+            {
+                boms.Add(Retrieve(serialNumber, version));
+            }
+            return boms;
         }
 
         public OriginalBom RetrieveOriginal(string serialNumber, int version)
