@@ -15,72 +15,109 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
-//TODO need to make use of async methods once suitable methods have been added to the core library
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Abstractions;
 using System.Linq;
-using System.Text.Json;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using CycloneDX.BomRepoServer.Exceptions;
-using CycloneDX.BomRepoServer.Options;
-using CycloneDX.Models.v1_3;
-using Microsoft.Extensions.Logging;
 using Amazon.S3;
 using Amazon.S3.Model;
+using CycloneDX.BomRepoServer.Exceptions;
+using CycloneDX.Models.v1_3;
+using CycloneDX.Protobuf;
 
+/*
+ * TODO
+ *
+ * - Add storage metadata file
+ * 
+ */
 namespace CycloneDX.BomRepoServer.Services
 {
     class S3RepoService : IRepoService
     {
-        private readonly IAmazonS3 _s3Client;
-        private readonly string _bucketName;
         private const int InternalStorageVersion = 1;
+        private readonly string _bucketName;
+        private readonly IAmazonS3 _s3Client;
 
-        public S3RepoService(IAmazonS3 s3Client)
+        public S3RepoService(IAmazonS3 s3Client, string bucketName = "bomserver")
         {
-            this._s3Client = s3Client;
-            this._bucketName = "bomserver"; // TODO Configurable
+            _s3Client = s3Client;
+            _bucketName = bucketName;
         }
 
         public void Delete(string serialNumber, int version)
         {
-            throw new NotImplementedException();
+            Observable.FromAsync(async () =>
+                {
+                    await _s3Client.Paginators.ListObjectsV2(new ListObjectsV2Request
+                        {
+                            BucketName = _bucketName,
+                            Prefix = BomDirectory(serialNumber, version)
+                        })
+                        .S3Objects
+                        .ToObservable()
+                        .Select(s3Object => new KeyVersion {Key = s3Object.Key})
+                        .Buffer(1000)
+                        .SelectMany(objectKeys =>
+                        {
+                            // Limit concurrency?
+                            return _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
+                            {
+                                BucketName = _bucketName,
+                                Objects = objectKeys.ToList()
+                            });
+                        });
+                })
+                .ToTask()
+                .Wait();
         }
 
         public void DeleteAll(string serialNumber)
         {
-            throw new NotImplementedException();
+            Observable.FromAsync(async () =>
+                {
+                    await _s3Client.Paginators.ListObjectsV2(new ListObjectsV2Request
+                        {
+                            BucketName = _bucketName,
+                            Prefix = BomInstanceBaseDirectory(serialNumber)
+                        })
+                        .S3Objects
+                        .ToObservable()
+                        .Select(s3Object => new KeyVersion {Key = s3Object.Key})
+                        .Buffer(1000)
+                        .SelectMany(objectKeys =>
+                        {
+                            // Limit concurrency?
+                            return _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
+                            {
+                                BucketName = _bucketName,
+                                Objects = objectKeys.ToList()
+                            });
+                        });
+                })
+                .ToTask()
+                .Wait();
         }
 
         public IEnumerable<string> GetAllBomSerialNumbers()
         {
             return _s3Client
                 .Paginators
-                .ListObjectsV2(new ListObjectsV2Request{
-                    BucketName = "bomserver"
+                .ListObjectsV2(new ListObjectsV2Request
+                {
+                    BucketName = _bucketName
                 })
                 .S3Objects
-                .Where(s3Object => s3Object.Key.StartsWith("urn_uuid_"))
-                .Select(s3Object => s3Object.Key.Replace("_", ":"))
+                .Where(s3Object => s3Object.Key.StartsWith("v1/urn_uuid_"))
+                .Select(s3Object =>
+                {
+                    var segments = s3Object.Key.Split("/", StringSplitOptions.RemoveEmptyEntries);
+                    return segments[1].Replace("_", ":");
+                })
                 .ToEnumerable();
-        }
-
-        private string BomBaseDirectory()
-        {
-            return $"v{InternalStorageVersion}";
-        }
-
-        private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)
-        {
-            // The only invalid character possible is ":" in serial number
-            return filePathSegment.Replace(':', '_');
-        }
-
-        private string BomInstanceBaseDirectory(string serialNumber)
-        {
-            return $"{BomBaseDirectory()}/{ReplaceInvalidFilepathSegmentCharacters(serialNumber)}";
         }
 
         public IEnumerable<int> GetAllVersions(string serialNumber)
@@ -88,26 +125,35 @@ namespace CycloneDX.BomRepoServer.Services
             var instanceDirname = BomInstanceBaseDirectory(serialNumber);
             return _s3Client
                 .Paginators
-                .ListObjectsV2(new ListObjectsV2Request{
-                    BucketName = this._bucketName,
+                .ListObjectsV2(new ListObjectsV2Request
+                {
+                    BucketName = _bucketName,
                     Prefix = instanceDirname,
-
                 })
                 .S3Objects
-                .Where((s3Object) => s3Object.Key.EndsWith("bom.cdx"))
-                .Select((s3Object) => {
+                .Where(s3Object => s3Object.Key.EndsWith("bom.cdx"))
+                .Select(s3Object =>
+                {
                     // TODO There are probably better ways to do this
                     var segments = s3Object.Key.Split('/', StringSplitOptions.RemoveEmptyEntries);
-                    int.TryParse(segments[^2], out int result);
+                    int.TryParse(segments[^2], out var result);
                     return result;
                 })
+                .OrderBy(v => v)
                 .ToEnumerable();
-            
         }
 
-        public DateTime GetBomAge(string serialNumber, int version)
+        public DateTime GetBomAge(string serialNumber, int version) // TODO Not covered by tests
         {
-            throw new NotImplementedException();
+            return _s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
+                {
+                    BucketName = _bucketName,
+                    Key = BomFilename(serialNumber, version),
+                })
+                .ToObservable()
+                .Select(s3Object => s3Object.LastModified)
+                .ToTask()
+                .Result;
         }
 
         public Bom Retrieve(string serialNumber, int? version = null)
@@ -116,52 +162,98 @@ namespace CycloneDX.BomRepoServer.Services
             if (!version.HasValue) return null;
 
             var filename = BomFilename(serialNumber, version.Value);
-            var response = this._s3Client.GetObjectAsync(new GetObjectRequest() {
-                BucketName = this._bucketName,
-                Key = filename,
-
-            });
-            var result = response.GetAwaiter().GetResult();
-            using var responseStream = result.ResponseStream;
-            var bom = Protobuf.Deserializer.Deserialize(responseStream);
-            return bom;
+            return Observable.FromAsync(async () =>
+                {
+                    try
+                    {
+                        var response = await _s3Client.GetObjectAsync(new GetObjectRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = filename
+                        });
+                        await using (response.ResponseStream)
+                        {
+                            var bom = Deserializer.Deserialize(response.ResponseStream);
+                            return bom;
+                        }
+                    }
+                    catch (AmazonS3Exception amazonS3Exception)
+                    {
+                        if (amazonS3Exception.ErrorCode == "NoSuchKey") return null;
+                        throw;
+                    }
+                })
+                .SingleOrDefaultAsync()
+                .ToTask()
+                .Result;
         }
 
         public List<Bom> RetrieveAll(string serialNumber)
         {
-            var boms = new List<CycloneDX.Models.v1_3.Bom>();
+            var boms = new List<Bom>();
             var versions = GetAllVersions(serialNumber);
             foreach (var version in versions)
             {
                 boms.Add(Retrieve(serialNumber, version));
             }
+
             return boms;
         }
 
         public OriginalBom RetrieveOriginal(string serialNumber, int version)
         {
-            throw new NotImplementedException();
-        }
+            var directoryName = BomDirectory(serialNumber, version);
+            return _s3Client
+                .Paginators
+                .ListObjectsV2(new ListObjectsV2Request
+                {
+                    BucketName = _bucketName,
+                    Prefix = directoryName
+                })
+                .S3Objects
+                .Where(s3Object => s3Object.Key.StartsWith("bom.") && !s3Object.Key.EndsWith(".cdx"))
+                .Where(s3Object =>
+                {
+                    var baseFilename = Path.GetFileName(s3Object.Key);
+                    var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
+                    var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
 
-        public Stream RetrieveStream(string serialNumber, int? version = null)
-        {
-            throw new NotImplementedException();
-        }
+                    var formatString = baseFilename.Substring(lastBreak + 1);
+                    var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
 
-        private string BomDirectory(string serialNumber, int version)
-        {
-            return $"{BomInstanceBaseDirectory(serialNumber)}/{version.ToString()}";
-        }
+                    return Format.TryParse(formatString, true, out Format parsedFormat)
+                           && SpecificationVersion.TryParse(specificationVersion, true,
+                               out SpecificationVersion parsedSpecificationVersion);
+                })
+                .Select(s3Object =>
+                {
+                    var result = _s3Client.GetObjectAsync(new GetObjectRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = s3Object.Key,
+                        })
+                        .Result;
 
-        private string BomFilename(string serialNumber, int version)
-        {
-            return $"{BomDirectory(serialNumber, version)}/bom.cdx";
-        }
+                    var baseFilename = Path.GetFileName(s3Object.Key);
+                    var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
+                    var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
 
-        private string OriginalBomFilename(string serialNumber, int version, Format format, SpecificationVersion specificationVersion)
-        {
-            return $"{BomDirectory(serialNumber, version)}/bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}";
-            //return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), $"bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}");
+                    var formatString = baseFilename.Substring(lastBreak + 1);
+                    var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
+
+                    Format.TryParse(formatString, true, out Format parsedFormat);
+                    SpecificationVersion.TryParse(specificationVersion, true,
+                        out SpecificationVersion parsedSpecificationVersion);
+
+                    return new OriginalBom
+                    {
+                        Format = parsedFormat,
+                        SpecificationVersion = parsedSpecificationVersion,
+                        BomStream = result.ResponseStream
+                    };
+                })
+                .FirstOrDefaultAsync()
+                .Result;
         }
 
         public Bom Store(Bom bom)
@@ -183,52 +275,112 @@ namespace CycloneDX.BomRepoServer.Services
 
             var directoryName = BomDirectory(bom.SerialNumber, bom.Version.Value);
             var fileName = BomFilename(bom.SerialNumber, bom.Version.Value);
-            
-            using (var stream = new MemoryStream()) {
-                Protobuf.Serializer.Serialize(bom, stream);
-                _s3Client.PutObjectAsync(new PutObjectRequest{
-                    BucketName = this._bucketName,
-                    Key = fileName,
-                    InputStream = stream,
-                    ContentType = "application/protobuf" // TODO What content type?
-                })
-                .GetAwaiter()
-                .GetResult();
-            }
 
-            return bom;
+            return Observable.FromAsync(async () =>
+                {
+                    try
+                    {
+                        await _s3Client
+                            .GetObjectMetadataAsync(new GetObjectMetadataRequest
+                            {
+                                BucketName = _bucketName,
+                                Key = fileName,
+                            });
+                        throw new BomAlreadyExistsException();
+                    }
+                    catch (AmazonS3Exception amazonS3Exception)
+                    {
+                        if (amazonS3Exception.ErrorCode != "NotFound")
+                            throw;
+                    }
+
+                    await using (var memoryStream = new MemoryStream())
+                    {
+                        Serializer.Serialize(bom, memoryStream);
+                        await _s3Client.PutObjectAsync(new PutObjectRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = fileName,
+                            InputStream = memoryStream,
+                            ContentType = "application/protobuf" // TODO What content type?
+                        });
+                        return bom;
+                    }
+                })
+                .ToAsyncEnumerable()
+                .SingleOrDefaultAsync()
+                .Result;
+        }
+
+        public Task StoreOriginal(string serialNumber, int version, Stream bomStream, Format format,
+            SpecificationVersion specificationVersion)
+        {
+            var fileName = OriginalBomFilename(serialNumber, version, format, specificationVersion);
+
+            return Observable.FromAsync(async () =>
+                {
+                    try
+                    {
+                        await _s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
+                        {
+                            BucketName = _bucketName,
+                            Key = fileName
+                        });
+                        throw new BomAlreadyExistsException();
+                    }
+                    catch (AmazonS3Exception amazonS3Exception)
+                    {
+                        if (amazonS3Exception.ErrorCode != "NotFound")
+                            throw;
+                    }
+
+                    await _s3Client.PutObjectAsync(new PutObjectRequest
+                    {
+                        BucketName = _bucketName,
+                        InputStream = bomStream,
+                        Key = fileName,
+                        ContentType = MediaTypes.GetMediaType(format)
+                    });
+                })
+                .ToTask();
+        }
+
+        private string BomBaseDirectory()
+        {
+            return $"v{InternalStorageVersion}";
+        }
+
+        private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)
+        {
+            // The only invalid character possible is ":" in serial number
+            return filePathSegment.Replace(':', '_');
+        }
+
+        private string BomInstanceBaseDirectory(string serialNumber)
+        {
+            return $"{BomBaseDirectory()}/{ReplaceInvalidFilepathSegmentCharacters(serialNumber)}";
+        }
+
+        private string BomDirectory(string serialNumber, int version)
+        {
+            return $"{BomInstanceBaseDirectory(serialNumber)}/{version.ToString()}";
+        }
+
+        private string BomFilename(string serialNumber, int version)
+        {
+            return $"{BomDirectory(serialNumber, version)}/bom.cdx";
+        }
+
+        private string OriginalBomFilename(string serialNumber, int version, Format format,
+            SpecificationVersion specificationVersion)
+        {
+            return $"{BomDirectory(serialNumber, version)}/bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}";
         }
 
         private int? GetLatestVersion(string serialNumber)
         {
             var versions = GetAllVersions(serialNumber);
             return versions.LastOrDefault();
-        }
-
-        public Task StoreOriginal(string serialNumber, int version, Stream bomStream, Format format, SpecificationVersion specificationVersion)
-        {
-            var directoryName = BomDirectory(serialNumber, version);
-            var fileName = OriginalBomFilename(serialNumber, version, format, specificationVersion);
-
-            // TODO Check if object already exists
-            return _s3Client.PutObjectAsync(new PutObjectRequest() {
-                BucketName = this._bucketName,
-                InputStream = bomStream,
-                Key = fileName,
-                ContentType = "application/protobuf" // TODO Correct format
-            });
-            /*try
-            {
-                using var fs = _fileSystem.File.Open(fileName, System.IO.FileMode.CreateNew,
-                    System.IO.FileAccess.Write);
-                await bomStream.CopyToAsync(fs);
-            }
-            catch (System.IO.IOException)
-            {
-                if (_fileSystem.File.Exists(fileName))
-                    throw new BomAlreadyExistsException();
-                throw;
-            }*/
         }
     }
 }

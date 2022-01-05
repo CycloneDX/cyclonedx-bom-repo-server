@@ -17,7 +17,6 @@
     
 using System;
 using System.Collections.Generic;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -36,6 +35,8 @@ using CycloneDX.BomRepoServer.Services;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Amazon.S3;
 using Amazon;
+using Microsoft.VisualBasic;
+using FileSystem = System.IO.Abstractions.FileSystem;
 
 namespace CycloneDX.BomRepoServer
 {
@@ -85,16 +86,24 @@ namespace CycloneDX.BomRepoServer
                 var fileSystemRepoOptions = new FileSystemRepoOptions();
                 Configuration.GetSection("Repo:Options").Bind(fileSystemRepoOptions);
                 repoService = new FileSystemRepoService(new FileSystem(), fileSystemRepoOptions);
-            } else if (repoOptions.StorageType.Equals("S3")) {
-                var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin"); 
-                var s3Config = new AmazonS3Config
+            } else if (repoOptions.StorageType.Equals("S3"))
+            {
+                var s3ClientOptions = Configuration.GetSection("Repo:Options").Get<S3ClientOptions>();
+                var awsCredentials = new Amazon.Runtime.BasicAWSCredentials(s3ClientOptions.AccessKey, s3ClientOptions.SecretKey);
+                var s3Config = new AmazonS3Config()
                 {
-                    AuthenticationRegion = RegionEndpoint.USEast1.SystemName, // Should match the `MINIO_REGION` environment variable.
-                    ServiceURL = "http://localhost:9000", // replace http://localhost:9000 with URL of your MinIO server
-                    ForcePathStyle = true // MUST be true to work correctly with MinIO server
+                    ForcePathStyle = s3ClientOptions.ForcePathStyle,
+                    UseHttp = s3ClientOptions.UseHttp,
+                    AuthenticationRegion = s3ClientOptions.Region,
                 };
+                if (s3ClientOptions.Endpoint != string.Empty)
+                {
+                    var protocol = s3ClientOptions.UseHttp ? "http" : "https";
+                    s3Config.ServiceURL = $"{protocol}://{s3ClientOptions.Endpoint}";
+                }
+                
                 var s3Client = new AmazonS3Client(awsCredentials, s3Config);
-                repoService = new S3RepoService(s3Client);
+                repoService = new S3RepoService(s3Client, s3ClientOptions.BucketName);
             } else {
                 throw new InvalidOperationException("Missing or unsupported storage type"); // TODO Validation filter https://andrewlock.net/adding-validation-to-strongly-typed-configuration-objects-in-asp-net-core/
             }
