@@ -5,3 +5,7 @@ bin/
 obj/
 *.user
 repo/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*

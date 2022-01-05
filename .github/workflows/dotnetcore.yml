@@ -26,4 +26,10 @@ jobs:
     - name: Tests
       run: |
         dotnet restore
-        dotnet test
+        dotnet test /p:CollectCoverage=true /p:CoverletOutput=TestResults/ /p:CoverletOutputFormat=lcov
+
+    - name: Publish coverage report to coveralls.io   
+      uses: coverallsapp/github-action@master   
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }} 
+        path-to-lcov: tests/CycloneDX.BomRepoServer.Tests/TestResults/coverage.info
