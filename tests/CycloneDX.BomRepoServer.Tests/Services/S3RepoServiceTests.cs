@@ -16,43 +16,37 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
 using System;
-using System.IO.Abstractions;
 using System.Linq;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Controllers;
 using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
-using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
 using CycloneDX.Models.v1_3;
-using Moq;
 using Amazon.S3;
 using Amazon.S3.Model;
-using System.Collections.Generic;
-using Amazon.Runtime;
-using System.Threading;
-using System.IO;
+using Amazon;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    // Async enumerator for unit testing
-    internal class TestPaginatedEnumerable<T> : IPaginatedEnumerable<T>
+    public class S3RepoServiceTests : IClassFixture<MinioFixture>, IDisposable
     {
-        private readonly IAsyncEnumerable<T> _inner;
+        private AmazonS3Client s3Client;
 
-        public TestPaginatedEnumerable(IEnumerable<T> enumerator)
+        public S3RepoServiceTests(MinioFixture minioFixture)
         {
-            _inner = enumerator.ToAsyncEnumerable();
+            var mappedPort = minioFixture.TestContainer.GetMappedPublicPort(9000);
+            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin"); 
+            var s3Config = new AmazonS3Config
+            {
+                AuthenticationRegion = RegionEndpoint.USEast1.SystemName, // Should match the `MINIO_REGION` environment variable.
+                ServiceURL = $"http://localhost:{mappedPort}", // replace http://localhost:9000 with URL of your MinIO server
+                ForcePathStyle = true // MUST be true to work correctly with MinIO server
+            };
+            s3Client = new AmazonS3Client(awsCredentials, s3Config);
+            s3Client.PutBucketAsync("bomserver").GetAwaiter().GetResult();
         }
 
-        public IAsyncEnumerator<T> GetAsyncEnumerator(CancellationToken cancellationToken = default)
-        {
-            return _inner.GetAsyncEnumerator();
-        }
-    }
-
-    public class AWSRepoServiceTests
-    {
         [Theory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
         [InlineData("urn:uuid:{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
@@ -67,28 +61,23 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void GetAllBomSerialNumbers_ReturnsAll()
         {
-            var mockS3Client = new Mock<IAmazonS3>();
-            var mockObjects = new List<S3Object>() {
-                new S3Object() {
-                    Key = "urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79"
-                },
-                new S3Object() {
-                    Key = "urn_uuid_4e671687-395b-41f5-a30f-a58921a69b79"
-                },
-                new S3Object() {
-                    Key = "urn_uuid_5e671687-395b-41f5-a30f-a58921a69b79",
-                },
-            };
+            var service = new S3RepoService(s3Client);
+            service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
+            service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
+            service.Store(new Bom
+            {
+                SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1,
+            });
 
-            mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
-                .Returns(() => {
-                    var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
-                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
-                    return mockPaginatedResult.Object;
-                });
-            
-            var service = new S3RepoService(mockS3Client.Object);
-            
             var retrievedSerialNumbers = service.GetAllBomSerialNumbers().ToList();
             retrievedSerialNumbers.Sort();
             
@@ -102,33 +91,18 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void RetrieveAll_ReturnsAllVersions()
         {
-            var mockS3Client = new Mock<IAmazonS3>();
-            var mockObjects = new List<S3Object>() {
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/1/bom.cdx"
-                },
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx"
-                },
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/bom.cdx"
-                },
-            };
-
-            mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
-                .Returns(() => {
-                    var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
-                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
-                    return mockPaginatedResult.Object;
-                });
-            
-            var service = new S3RepoService(mockS3Client.Object);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            
+            service.Store(bom);
+            bom.Version = 2;
+            service.Store(bom);
+            bom.Version = 3;
+            service.Store(bom);
+
             var retrievedBoms = service.RetrieveAll(bom.SerialNumber);
             
             Assert.Collection(retrievedBoms, 
@@ -141,49 +115,18 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void RetrieveLatest_ReturnsLatestVersion()
         {
-            var mockS3Client = new Mock<IAmazonS3>();
-            var mockObjects = new List<S3Object>() {
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/1/bom.cdx",
-                },
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx"
-                },
-                new S3Object() {
-                    Key = "v1/urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/bom.cdx"
-                },
-            };
-
-            mockS3Client.Setup(x => x.Paginators.ListObjectsV2(It.IsAny<ListObjectsV2Request>()))
-                .Returns(() => {
-                    var mockPaginatedResult = new Mock<IListObjectsV2Paginator>();
-                    mockPaginatedResult.SetupGet(x => x.S3Objects).Returns(new TestPaginatedEnumerable<S3Object>(mockObjects));
-                    return mockPaginatedResult.Object;
-                });
-            mockS3Client.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(match => match.Key.Contains("urn_uuid_3e671687-395b-41f5-a30f-a58921a69b79/3/")), It.IsAny<CancellationToken>()))
-                .Returns(() => {
-                    var stream = new MemoryStream();
-                    var bom = new Bom() {
-                        SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
-                        Version = 3
-                    };
-                    Protobuf.Serializer.Serialize(bom, stream);
-                    stream.Seek(0, SeekOrigin.Begin);
-                    var result = new GetObjectResponse() {
-                        ResponseStream = stream
-                    };
-
-                    return Task.FromResult(result);
-                });
-            
-            var service = new S3RepoService(mockS3Client.Object);
-
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
-                Version = 3
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                Version = 1,
             };
-            
+            service.Store(bom);
+            bom.Version = 2;
+            service.Store(bom);
+            bom.Version = 3;
+            service.Store(bom);
+
             var retrievedBom = service.Retrieve(bom.SerialNumber);
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
@@ -193,30 +136,28 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void StoreBom_StoresSpecificVersion()
         {
-            var mockS3Client = new Mock<IAmazonS3>();
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
-                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 2,
             };
-            mockS3Client.Setup(x => x.PutObjectAsync(It.Is<PutObjectRequest>(match => match.Key.EndsWith("3e671687-395b-41f5-a30f-a58921a69b79/2/bom.cdx")), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(new PutObjectResponse()));
-            var service = new S3RepoService(mockS3Client.Object);
-            
+
             service.Store(bom);
 
-            mockS3Client.VerifyAll();
+            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            
+            Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
+            Assert.Equal(retrievedBom.Version, bom.Version);
         }
         
-        // TODO This is probably a better fit in the controller test(s) 
-        /*
         [Theory]
         [InlineData(Format.Xml)]
         [InlineData(Format.Json)]
         [InlineData(Format.Protobuf)]
         public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
@@ -230,44 +171,12 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             using var resultMS = new System.IO.MemoryStream();
             await result.BomStream.CopyToAsync(resultMS);
             Assert.Equal(bom, resultMS.ToArray());
-        }*/
+        }
         
-        [Theory]
-        [InlineData(Format.Xml)]
-        [InlineData(Format.Json)]
-        [InlineData(Format.Protobuf)]
-        public async void StoreOriginalBom_WritesToStorage(Format format) {
-            var mockS3Client = new Mock<IAmazonS3>();
-            var filenameWithFormat = $"bom.{SpecificationVersion.v1_2}.{format.ToString().ToLowerInvariant()}";
-            mockS3Client.Setup(x => x.PutObjectAsync(It.Is<PutObjectRequest>(match => match.Key.EndsWith($"5e671687-395b-41f5-a30f-a58921a69b79/1/{filenameWithFormat}")), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(new PutObjectResponse()));
-            var service = new S3RepoService(mockS3Client.Object);
-            var bom = new byte[] {32, 64, 128};
-            using var originalMS = new System.IO.MemoryStream(bom);
-
-            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
-            mockS3Client.VerifyAll();
-        }
-
-        [Theory]
-        [InlineData(Format.Xml)]
-        [InlineData(Format.Json)]
-        [InlineData(Format.Protobuf)]
-        public void RetrieveOriginal_ReadsFromStorage(Format format) {
-            var mockS3Client = new Mock<IAmazonS3>();
-            var filenameWithFormat = $"bom.{SpecificationVersion.v1_2}.{format.ToString().ToLowerInvariant()}";
-            mockS3Client.Setup(x => x.GetObjectAsync(It.Is<GetObjectRequest>(match => match.Key.EndsWith($"5e671687-395b-41f5-a30f-a58921a69b79/1/{filenameWithFormat}")), It.IsAny<CancellationToken>()))
-                .Returns(Task.FromResult(new GetObjectResponse()));
-            var service = new S3RepoService(mockS3Client.Object);
-
-            using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
-            mockS3Client.VerifyAll();
-        }
-
         [Fact]
         public void StoreClashingBomVersion_ThrowsException()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -282,7 +191,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void StoreBomWithoutVersion_SetsVersion()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid()
@@ -301,7 +210,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -325,7 +234,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void Delete_DeletesSpecificVersion()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -347,7 +256,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void Delete_DeletesBomsFromAllVersions()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -372,7 +281,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public void DeleteAll_DeletesAllVersions()
         {
-            var service = new S3RepoService(null);
+            var service = new S3RepoService(s3Client);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -388,6 +297,45 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             Assert.Null(retrievedBom);
             retrievedBom = service.Retrieve(bom.SerialNumber, 2);
             Assert.Null(retrievedBom);
+        }
+        
+        public void Dispose()
+        {
+            // List and delete all objects
+            ListObjectsRequest listRequest = new ListObjectsRequest
+            {
+                BucketName = "bomserver"
+            };
+            
+            ListObjectsResponse listResponse;
+            do
+            {
+                // Get a list of objects
+                listResponse = s3Client.ListObjectsAsync(listRequest).GetAwaiter().GetResult();
+                foreach (S3Object obj in listResponse.S3Objects)
+                {
+                    // Delete each object
+                    s3Client.DeleteObjectAsync(new DeleteObjectRequest
+                    {
+                        BucketName = "bomserver",
+                        Key = obj.Key
+                    })
+                        .GetAwaiter()
+                        .GetResult();
+                }
+            
+                // Set the marker property
+                listRequest.Marker = listResponse.NextMarker;
+            } while (listResponse.IsTruncated);
+            
+            // Construct DeleteBucket request
+            DeleteBucketRequest request = new DeleteBucketRequest
+            {
+                BucketName = "bomserver"
+            };
+            
+            // Issue call
+            DeleteBucketResponse response = s3Client.DeleteBucketAsync(request).GetAwaiter().GetResult();
         }
     }
 }

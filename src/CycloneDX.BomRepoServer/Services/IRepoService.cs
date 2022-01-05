@@ -32,7 +32,6 @@ namespace CycloneDX.BomRepoServer.Services
         CycloneDX.Models.v1_3.Bom Retrieve(string serialNumber, int? version = null);
         List<CycloneDX.Models.v1_3.Bom> RetrieveAll(string serialNumber);
         OriginalBom RetrieveOriginal(string serialNumber, int version);
-        System.IO.Stream RetrieveStream(string serialNumber, int? version = null);
         CycloneDX.Models.v1_3.Bom Store(CycloneDX.Models.v1_3.Bom bom);
         Task StoreOriginal(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion);
     }
