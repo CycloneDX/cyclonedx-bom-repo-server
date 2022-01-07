@@ -211,7 +211,7 @@ namespace CycloneDX.BomRepoServer.Services
                     Prefix = directoryName
                 })
                 .S3Objects
-                .Where(s3Object => s3Object.Key.StartsWith("bom.") && !s3Object.Key.EndsWith(".cdx"))
+                .Where(s3Object => s3Object.Key.Contains("/bom.") && !s3Object.Key.EndsWith(".cdx"))
                 .Where(s3Object =>
                 {
                     var baseFilename = Path.GetFileName(s3Object.Key);
