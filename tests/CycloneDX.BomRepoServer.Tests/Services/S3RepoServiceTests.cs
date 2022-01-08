@@ -40,7 +40,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             var s3Config = new AmazonS3Config
             {
                 AuthenticationRegion = RegionEndpoint.USEast1.SystemName, // Should match the `MINIO_REGION` environment variable.
-                ServiceURL = $"http://localhost:{mappedPort}", // replace http://localhost:9000 with URL of your MinIO server
+                ServiceURL = $"http://127.0.0.1:{mappedPort}", // replace http://127.0.0.1:9000 with URL of your MinIO server
                 ForcePathStyle = true // MUST be true to work correctly with MinIO server
             };
             s3Client = new AmazonS3Client(awsCredentials, s3Config);
