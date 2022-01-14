@@ -64,13 +64,13 @@ namespace CycloneDX.BomRepoServer.Services
             _logger = logger;
         }
 
-        public void UpdateCache()
+        public async Task UpdateCache()
         {
             var existingEntries = _bomCache.Keys.ToList();
 
-            foreach (var serialNumber in _repoService.GetAllBomSerialNumbers())
+            await foreach (var serialNumber in _repoService.GetAllBomSerialNumbersAsync())
             {
-                foreach (var bom in _repoService.RetrieveAll(serialNumber))
+                await foreach (var bom in _repoService.RetrieveAllAsync(serialNumber))
                 {
                     existingEntries.Remove((serialNumber, bom.Version.Value));
                     // add new/update existing BOMs

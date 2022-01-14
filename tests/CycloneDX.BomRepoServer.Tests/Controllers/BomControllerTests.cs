@@ -86,7 +86,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
             var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
 
@@ -179,7 +179,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
 
             Assert.Equal(HttpStatusCode.Created, result.StatusCode);
 
-            var storedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            var storedBom = await service.RetrieveAsync(bom.SerialNumber, bom.Version.Value);
             
             Assert.Equal(bom.SerialNumber, storedBom.SerialNumber);
             Assert.Equal(bom.Version, storedBom.Version);

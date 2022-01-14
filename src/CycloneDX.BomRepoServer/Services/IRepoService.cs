@@ -18,21 +18,22 @@
 //TODO need to make use of async methods once suitable methods have been added to the core library
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace CycloneDX.BomRepoServer.Services
 {
     public interface IRepoService
     {
-        void Delete(string serialNumber, int version);
-        void DeleteAll(string serialNumber);
-        IEnumerable<string> GetAllBomSerialNumbers();
-        IEnumerable<int> GetAllVersions(string serialNumber);
-        DateTime GetBomAge(string serialNumber, int version);
-        CycloneDX.Models.v1_3.Bom Retrieve(string serialNumber, int? version = null);
-        List<CycloneDX.Models.v1_3.Bom> RetrieveAll(string serialNumber);
-        OriginalBom RetrieveOriginal(string serialNumber, int version);
-        CycloneDX.Models.v1_3.Bom Store(CycloneDX.Models.v1_3.Bom bom);
-        Task StoreOriginal(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion);
+        Task DeleteAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
+        Task DeleteAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
+        IAsyncEnumerable<string> GetAllBomSerialNumbersAsync(CancellationToken cancellationToken = default(CancellationToken));
+        IAsyncEnumerable<int> GetAllVersionsAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
+        Task<DateTime> GetBomAgeAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
+        Task<CycloneDX.Models.v1_3.Bom> RetrieveAsync(string serialNumber, int? version = null, CancellationToken cancellationToken = default(CancellationToken));
+        IAsyncEnumerable<CycloneDX.Models.v1_3.Bom> RetrieveAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
+        Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
+        Task<CycloneDX.Models.v1_3.Bom> StoreAsync(CycloneDX.Models.v1_3.Bom bom, CancellationToken cancellationToken = default(CancellationToken));
+        Task StoreOriginalAsync(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken));
     }
 }

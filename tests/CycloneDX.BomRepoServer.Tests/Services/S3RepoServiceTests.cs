@@ -26,28 +26,24 @@ using CycloneDX.Models.v1_3;
 using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon;
+using DotNet.Testcontainers.Containers.Builders;
+using DotNet.Testcontainers.Containers.Modules;
+using DotNet.Testcontainers.Containers.WaitStrategies;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    public class S3RepoServiceTests : IClassFixture<MinioFixture>, IDisposable
+    public class S3RepoServiceTests : IClassFixture<MinioFixture>, IAsyncLifetime
     {
-        private AmazonS3Client s3Client;
+        private IAmazonS3 _s3Client;
+        private readonly MinioFixture _minioFixture;
+        private string _bucketName;
 
         public S3RepoServiceTests(MinioFixture minioFixture)
         {
-            var mappedPort = minioFixture.TestContainer.GetMappedPublicPort(9000);
-            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin"); 
-            var s3Config = new AmazonS3Config
-            {
-                AuthenticationRegion = RegionEndpoint.USEast1.SystemName, // Should match the `MINIO_REGION` environment variable.
-                ServiceURL = $"http://localhost:{mappedPort}", // replace http://localhost:9000 with URL of your MinIO server
-                ForcePathStyle = true // MUST be true to work correctly with MinIO server
-            };
-            s3Client = new AmazonS3Client(awsCredentials, s3Config);
-            s3Client.PutBucketAsync("bomserver").GetAwaiter().GetResult();
+            this._minioFixture = minioFixture;
         }
 
-        [Theory]
+        [NeedsDockerForCITheory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
         [InlineData("urn:uuid:{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
         [InlineData("urn_uuid_3e671687-395b-41f5-a30f-a58921a69b70", false)]
@@ -55,116 +51,118 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [InlineData("abc", false)]
         public void ValidSerialNumberTest(string serialNumber, bool valid)
         {
-            Assert.Equal(valid, BomController.ValidSerialNumber(serialNumber));            
+            Assert.Equal(valid, BomController.ValidSerialNumber(serialNumber));
         }
-        
-        [Fact]
-        public void GetAllBomSerialNumbers_ReturnsAll()
+
+        [NeedsDockerForCIFact]
+        public async Task GetAllBomSerialNumbers_ReturnsAll()
         {
-            var service = new S3RepoService(s3Client);
-            service.Store(new Bom
+            var service = new S3RepoService(_s3Client, _bucketName);
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
-            service.Store(new Bom
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
-            service.Store(new Bom
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
 
-            var retrievedSerialNumbers = service.GetAllBomSerialNumbers().ToList();
+            var retrievedSerialNumbers = await service.GetAllBomSerialNumbersAsync().ToListAsync();
             retrievedSerialNumbers.Sort();
-            
-            Assert.Collection(retrievedSerialNumbers, 
+
+            Assert.Collection(retrievedSerialNumbers,
                 serialNumber => Assert.Equal("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", serialNumber),
                 serialNumber => Assert.Equal("urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79", serialNumber),
                 serialNumber => Assert.Equal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", serialNumber)
             );
         }
-        
-        [Fact]
-        public void RetrieveAll_ReturnsAllVersions()
+
+        [NeedsDockerForCIFact]
+        public async Task RetrieveAll_ReturnsAllVersions()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 3;
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBoms = service.RetrieveAll(bom.SerialNumber);
-            
-            Assert.Collection(retrievedBoms, 
+            var retrievedBoms = await service.RetrieveAllAsync(bom.SerialNumber).ToListAsync();
+
+            Assert.Collection(retrievedBoms,
                 bom => Assert.Equal(1, bom.Version),
                 bom => Assert.Equal(2, bom.Version),
                 bom => Assert.Equal(3, bom.Version)
             );
         }
-        
-        [Fact]
-        public void RetrieveLatest_ReturnsLatestVersion()
+
+        [NeedsDockerForCIFact]
+        public async Task RetrieveLatest_ReturnsLatestVersion()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 3;
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber);
-            
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber);
+
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
         }
-        
-        [Fact]
-        public void StoreBom_StoresSpecificVersion()
+
+        [NeedsDockerForCIFact]
+        public async Task StoreBom_StoresSpecificVersion()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 2,
             };
 
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
-            
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, bom.Version.Value);
+
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
         }
-        
-        [Theory]
+
+        [NeedsDockerForCITheory]
         [InlineData(Format.Xml)]
         [InlineData(Format.Json)]
         [InlineData(Format.Protobuf)]
         public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
-            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
+            await service.StoreOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format,
+                SpecificationVersion.v1_2);
 
-            using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
-            
+            // TODO Put back "using"
+            var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
+
             Assert.Equal(format, result.Format);
             Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
 
@@ -172,170 +170,225 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             await result.BomStream.CopyToAsync(resultMS);
             Assert.Equal(bom, resultMS.ToArray());
         }
-        
-        [Fact]
-        public void StoreClashingBomVersion_ThrowsException()
+
+        [NeedsDockerForCIFact]
+        public async Task StoreClashingBomVersion_ThrowsException()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
 
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            Assert.Throws<BomAlreadyExistsException>(() => service.Store(bom));
+            await Assert.ThrowsAsync<BomAlreadyExistsException>(async () => await service.StoreAsync(bom));
         }
-        
-        [Fact]
-        public void StoreBomWithoutVersion_SetsVersion()
+
+        [NeedsDockerForCIFact]
+        public async Task StoreBomWithoutVersion_SetsVersion()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid()
             };
 
-            var returnedBom = service.Store(bom);
+            var returnedBom = await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, 1);
-            
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
+
             Assert.Equal(bom.SerialNumber, returnedBom.SerialNumber);
             Assert.Equal(1, returnedBom.Version);
             Assert.Equal(returnedBom.SerialNumber, retrievedBom.SerialNumber);
             Assert.Equal(returnedBom.Version, retrievedBom.Version);
         }
-        
-        [Fact]
-        public void StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
+
+        [NeedsDockerForCIFact]
+        public async Task StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 2,
             };
             // store previous version
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
             // store new version without a version number
             bom.Version = null;
-            var returnedBom = service.Store(bom);
+            var returnedBom = await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(returnedBom.SerialNumber, returnedBom.Version.Value);
-            
+            var retrievedBom = await service.RetrieveAsync(returnedBom.SerialNumber, returnedBom.Version.Value);
+
             Assert.Equal(bom.SerialNumber, returnedBom.SerialNumber);
             Assert.Equal(3, returnedBom.Version);
             Assert.Equal(returnedBom.SerialNumber, retrievedBom.SerialNumber);
             Assert.Equal(returnedBom.Version, retrievedBom.Version);
         }
-        
-        [Fact]
-        public void Delete_DeletesSpecificVersion()
+
+        [NeedsDockerForCIFact]
+        public async Task Delete_DeletesSpecificVersion()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
-            
-            service.Delete(bom.SerialNumber, bom.Version.Value);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            await service.DeleteAsync(bom.SerialNumber, bom.Version.Value);
+
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, bom.Version.Value);
             Assert.Null(retrievedBom);
-            retrievedBom = service.Retrieve(bom.SerialNumber, 1);
+            retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
             Assert.Equal(bom.SerialNumber, retrievedBom.SerialNumber);
             Assert.Equal(1, retrievedBom.Version);
         }
-        
-        [Fact]
-        public void Delete_DeletesBomsFromAllVersions()
+
+        [NeedsDockerForCIFact]
+        public async Task Delete_DeletesBomsFromAllVersions()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
-            
-            service.Delete(bom.SerialNumber, 1);
+            await service.StoreAsync(bom);
 
-            var bomVersions = service.GetAllVersions(bom.SerialNumber);
-            
-            Assert.Collection(bomVersions, 
-                bomVersion =>
-                {
-                    Assert.Equal(2, bomVersion);
-                }
+            await service.DeleteAsync(bom.SerialNumber, 1);
+
+            var bomVersions = await service.GetAllVersionsAsync(bom.SerialNumber).ToListAsync();
+
+            Assert.Collection(bomVersions,
+                bomVersion => { Assert.Equal(2, bomVersion); }
             );
         }
-        
-        [Fact]
-        public void DeleteAll_DeletesAllVersions()
+
+        [NeedsDockerForCIFact]
+        public async Task DeleteAll_DeletesAllVersions()
         {
-            var service = new S3RepoService(s3Client);
+            var service = new S3RepoService(_s3Client, _bucketName);
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
-            
-            service.DeleteAll(bom.SerialNumber);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, 1);
+            await service.DeleteAllAsync(bom.SerialNumber);
+
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
             Assert.Null(retrievedBom);
-            retrievedBom = service.Retrieve(bom.SerialNumber, 2);
+            retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 2);
             Assert.Null(retrievedBom);
         }
-        
-        public void Dispose()
+
+        public async Task InitializeAsync()
+        {
+            var s3TestContext = await _minioFixture.CreateS3TestContext();
+            _s3Client = s3TestContext.AmazonS3Client;
+            _bucketName = s3TestContext.bucketName;
+        }
+
+        async Task IAsyncLifetime.DisposeAsync()
         {
             // List and delete all objects
             ListObjectsRequest listRequest = new ListObjectsRequest
             {
-                BucketName = "bomserver"
+                BucketName = _bucketName
             };
-            
+
             ListObjectsResponse listResponse;
             do
             {
                 // Get a list of objects
-                listResponse = s3Client.ListObjectsAsync(listRequest).GetAwaiter().GetResult();
+                listResponse = await _s3Client.ListObjectsAsync(listRequest);
                 foreach (S3Object obj in listResponse.S3Objects)
                 {
                     // Delete each object
-                    s3Client.DeleteObjectAsync(new DeleteObjectRequest
+                    await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
                     {
-                        BucketName = "bomserver",
+                        BucketName = _bucketName,
                         Key = obj.Key
-                    })
-                        .GetAwaiter()
-                        .GetResult();
+                    });
                 }
-            
+
                 // Set the marker property
                 listRequest.Marker = listResponse.NextMarker;
             } while (listResponse.IsTruncated);
-            
+
             // Construct DeleteBucket request
             DeleteBucketRequest request = new DeleteBucketRequest
             {
-                BucketName = "bomserver"
+                BucketName = _bucketName
             };
-            
+
             // Issue call
-            DeleteBucketResponse response = s3Client.DeleteBucketAsync(request).GetAwaiter().GetResult();
+            await _s3Client.DeleteBucketAsync(request);
         }
+    }
+
+    public class MinioFixture : IAsyncLifetime, IDisposable
+    {
+        protected internal record S3TestContext(IAmazonS3 AmazonS3Client, string bucketName);
+
+        private TestcontainersContainer _testContainer;
+        private AmazonS3Client _s3Client;
+        private string _bucketName;
+
+        protected internal async Task<S3TestContext> CreateS3TestContext()
+        {
+            await _s3Client.PutBucketAsync(_bucketName);
+            return new (_s3Client, _bucketName);
+        }
+
+        public async Task InitializeAsync()
+        {
+            var testcontainersBuilder = new TestcontainersBuilder<TestcontainersContainer>()
+                .WithImage("minio/minio")
+                .WithName("minio")
+                .WithPortBinding(9000, true)
+                .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(9000))
+                .WithCommand("server", "--console-address", ":9001", "/data")
+                .WithCleanUp(true);
+
+            _testContainer = testcontainersBuilder.Build();
+            await _testContainer.StartAsync();
+            
+            var mappedPort = _testContainer.GetMappedPublicPort(9000);
+            var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin");
+            var s3Config = new AmazonS3Config
+            {
+                ServiceURL = $"http://localhost:{mappedPort}",
+                ForcePathStyle = true // MUST be true to work correctly with MinIO server
+                
+            };
+            AWSConfigsS3.UseSignatureVersion4 = true;
+            _s3Client = new AmazonS3Client(awsCredentials, s3Config);
+            _bucketName = "bomserver";
+        }
+
+        public void Dispose()
+        {
+            _s3Client?.Dispose();
+        }
+        
+        async Task IAsyncLifetime.DisposeAsync()
+        {
+            await _testContainer.StopAsync();
+        }
+
+
     }
 }

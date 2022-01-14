@@ -33,7 +33,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
     public class CacheServiceTests
     {
         [Fact]
-        public void SearchByGroupName_ReturnsAll()
+        public async void SearchByGroupName_ReturnsAll()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -41,7 +41,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -53,7 +53,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -65,7 +65,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -77,7 +77,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:6e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -90,7 +90,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 }
             });
             var service = new CacheService(repoService);
-            service.UpdateCache();
+            await service.UpdateCache();
 
             var bomIdentifiers = service.Search(group: "Test").ToList();
             bomIdentifiers.Sort();
@@ -112,7 +112,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void SearchByName_ReturnsAll()
+        public async void SearchByName_ReturnsAll()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -120,7 +120,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -132,7 +132,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -144,7 +144,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -156,7 +156,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:6e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -169,7 +169,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 }
             });
             var service = new CacheService(repoService);
-            service.UpdateCache();
+            await service.UpdateCache();
 
             var bomIdentifiers = service.Search(name: "Test").ToList();
             bomIdentifiers.Sort();
@@ -191,7 +191,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
 
         [Fact]
-        public void SearchByVersion_ReturnsAll()
+        public async void SearchByVersion_ReturnsAll()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -199,7 +199,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -211,7 +211,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -223,7 +223,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -235,7 +235,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:6e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -248,7 +248,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 }
             });
             var service = new CacheService(repoService);
-            service.UpdateCache();
+            await service.UpdateCache();
 
             var bomIdentifiers = service.Search(version: "Test").ToList();
             bomIdentifiers.Sort();
@@ -270,7 +270,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
 
         [Fact]
-        public void CompositeSearch_ReturnsSingle()
+        public async void CompositeSearch_ReturnsSingle()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -278,7 +278,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -292,7 +292,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -306,7 +306,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             });
-            repoService.Store(new Bom
+            await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
@@ -321,7 +321,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 }
             });
             var service = new CacheService(repoService);
-            service.UpdateCache();
+            await service.UpdateCache();
 
             var bomIdentifiers = service.Search("ACME", "Thing", "1").ToList();
             bomIdentifiers.Sort();

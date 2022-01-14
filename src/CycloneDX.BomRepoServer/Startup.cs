@@ -50,9 +50,8 @@ namespace CycloneDX.BomRepoServer
         public IConfiguration Configuration { get; }
 
         // This method gets called by the runtime. Use this method to add services to the container.
-        public void ConfigureServices(IServiceCollection services)
+        public async void ConfigureServices(IServiceCollection services)
         {
-
             services.AddControllers(config =>
             {
                 config.RespectBrowserAcceptHeader = true;
@@ -108,7 +107,7 @@ namespace CycloneDX.BomRepoServer
                 throw new InvalidOperationException("Missing or unsupported storage type"); // TODO Validation filter https://andrewlock.net/adding-validation-to-strongly-typed-configuration-objects-in-asp-net-core/
             }
             
-            services.AddSingleton<IRepoService>(repoService);
+            services.AddSingleton(repoService);
             
             var bomCacheService = new CacheService(repoService);
             services.AddSingleton(bomCacheService);
@@ -118,10 +117,10 @@ namespace CycloneDX.BomRepoServer
             var bomRetentionService = new RetentionService(retentionOptions, repoService);
             services.AddSingleton(bomRetentionService);
 
-            bomCacheService.UpdateCache();
-
             services.AddHostedService<CacheUpdateBackgroundService>();
             services.AddHostedService<RetentionBackgroundService>();
+            
+            await bomCacheService.UpdateCache();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

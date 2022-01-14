@@ -58,7 +58,7 @@ namespace CycloneDX.BomRepoServer.Services
             do
             {
                 Console.WriteLine("Updating BOM cache...");
-                _cacheService.UpdateCache();
+                await _cacheService.UpdateCache();
  
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }

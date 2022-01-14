@@ -40,40 +40,40 @@ namespace CycloneDX.BomRepoServer.Services
             _logger = logger;
         }
 
-        public void ProcessRetention()
+        public async Task ProcessRetention()
         {
-            foreach (var serialNumber in _repoService.GetAllBomSerialNumbers())
+            await foreach (var serialNumber in _repoService.GetAllBomSerialNumbersAsync())
             {
-                ProcessMaxBomVersionsRetention(serialNumber);
-                ProcessMaxBomAgeRetention(serialNumber);
+                await ProcessMaxBomVersionsRetention(serialNumber);
+                await ProcessMaxBomAgeRetention(serialNumber);
             }
         }
 
-        private void ProcessMaxBomVersionsRetention(string serialNumber)
+        private async Task ProcessMaxBomVersionsRetention(string serialNumber)
         {
             if (_options.MaxBomVersions > 0)
             {
-                var versions = _repoService.GetAllVersions(serialNumber).ToList();
+                var versions = await _repoService.GetAllVersionsAsync(serialNumber).ToListAsync();
                 while (versions.Count > _options.MaxBomVersions)
                 {
-                    _repoService.Delete(serialNumber, versions[0]);
+                    await _repoService.DeleteAsync(serialNumber, versions[0]);
                     versions.RemoveAt(0);
                 }
             }
         }
 
-        private void ProcessMaxBomAgeRetention(string serialNumber)
+        private async Task ProcessMaxBomAgeRetention(string serialNumber)
         {
             if (_options.MaxBomAge > 0)
             {
                 var ageCutOff = DateTime.UtcNow - TimeSpan.FromDays(_options.MaxBomAge);
                 
-                foreach (var version in _repoService.GetAllVersions(serialNumber))
+                await foreach (var version in _repoService.GetAllVersionsAsync(serialNumber))
                 {
-                    var bomAge = _repoService.GetBomAge(serialNumber, version);
+                    var bomAge = await _repoService.GetBomAgeAsync(serialNumber, version);
                     if (bomAge < ageCutOff)
                     {
-                        _repoService.Delete(serialNumber, version);
+                        await _repoService.DeleteAsync(serialNumber, version);
                     }
                 }
             }

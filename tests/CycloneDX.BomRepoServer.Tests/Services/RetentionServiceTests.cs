@@ -33,7 +33,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
     public class RetentionServiceTests
     {
         [Fact]
-        public void Retention_Removes_ExtraBomVersions()
+        public async Task Retention_Removes_ExtraBomVersions()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -53,16 +53,16 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                     }
                 }
             };
-            repoService.Store(bom);
+            await repoService.StoreAsync(bom);
             bom.Version = 2;
-            repoService.Store(bom);
+            await repoService.StoreAsync(bom);
             bom.Version = 3;
-            repoService.Store(bom);
+            await repoService.StoreAsync(bom);
             var service = new RetentionService(new RetentionOptions { MaxBomVersions = 2 }, repoService);
             
-            service.ProcessRetention();
+            await service.ProcessRetention();
 
-            var bomVersions = repoService.GetAllVersions(bom.SerialNumber);
+            var bomVersions = await repoService.GetAllVersionsAsync(bom.SerialNumber).ToListAsync();
             
             Assert.Collection(bomVersions, 
                 bomVersion =>
