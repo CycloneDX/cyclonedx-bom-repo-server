@@ -58,15 +58,16 @@ jobs:
           echo "::set-output name=app_version::${VERSION}"
           echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Create github release and git tag for release
+      - name: Create GitHub release and git tag for release
         id: create-release
-        uses: softprops/action-gh-release@v0.1.14
+        uses: actions/create-release@v1.1.4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: ${{ env.APP_VERSION }}
+          release_name: ${{ env.APP_VERSION }}
           tag_name: v${{ env.APP_VERSION }}
           draft: false
           prerelease: false
-          token: ${{ secrets.GITHUB_TOKEN }}
 
   binaries:
     name: Build Binaries for GH Release
@@ -115,12 +116,35 @@ jobs:
           popd
           sha256sum ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}.tar.gz > ${ARCHIVE_NAME}.checksums
 
-      - name: Upload release archives to GitHub Release
-        uses: shogo82148/actions-upload-release-asset@v1.4.0
+      - name: Upload zip archive to GitHub release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}*
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
+          asset_content_type: application/zip
+
+      - name: Upload tar.gz archive to GitHub release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Upload checksums to GitHub release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
+          asset_content_type: text/plain
 
   containers:
     name: Build Container Images
