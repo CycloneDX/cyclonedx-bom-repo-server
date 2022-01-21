@@ -16,7 +16,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:6.0
 
 ENV TZ=Etc/UTC \
     LANG=C.UTF-8 \
-    REPO__DIRECTORY=Repo \
+    REPO__DIRECTORY=/repo \
     # tells ASP.NET to listen on 8080 per default (aka. an unprivileged port)
     ASPNETCORE_URLS=http://+:8080
 

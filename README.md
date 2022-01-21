@@ -74,7 +74,7 @@ the following environment variables
 
 | Environment Variable Name | Supported Values | Description | Default Value |
 | --- | --- | --- | --- |
-| REPO__DIRECTORY | Any valid directory path | The directory BOMs are stored | `Repo` |
+| REPO__DIRECTORY | Any valid directory path | The directory BOMs are stored | `Repo` (set to `\repo` within the official Container since *tbd*) |
 | ALLOWEDMETHODS__GET | `true` or `false` | Allows or forbids BOM retrieval | `false` |
 | ALLOWEDMETHODS__POST | `true` or `false` | Allows or forbids BOM creation | `false` |
 | ALLOWEDMETHODS__DELETE | `true` or `false` | Allows or forbids BOM deletion | `false` |
