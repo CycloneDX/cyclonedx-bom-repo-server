@@ -160,15 +160,14 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             await service.StoreOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format,
                 SpecificationVersion.v1_2);
 
-            // TODO Put back "using"
-            var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
-
-            Assert.Equal(format, result.Format);
-            Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
-
-            using var resultMS = new System.IO.MemoryStream();
-            await result.BomStream.CopyToAsync(resultMS);
-            Assert.Equal(bom, resultMS.ToArray());
+            using (var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1)) {
+                Assert.Equal(format, result.Format);
+                Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
+                using (var resultMS = new System.IO.MemoryStream()) {
+                    await result.BomStream.CopyToAsync(resultMS);
+                    Assert.Equal(bom, resultMS.ToArray());
+                }
+            };
         }
 
         [NeedsDockerForCIFact]
