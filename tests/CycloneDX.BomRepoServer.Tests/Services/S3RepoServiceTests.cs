@@ -384,9 +384,16 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             _s3Client?.Dispose();
         }
         
-        async Task IAsyncLifetime.DisposeAsync()
+        public async Task DisposeAsync()
         {
-            await _testContainer.StopAsync();
+            try {
+                await _testContainer.StopAsync();
+            }
+            #pragma warning disable CS0168
+            catch (InvalidOperationException invalidOperationException)
+            #pragma warning restore CS0168
+            {
+            }
         }
 
 

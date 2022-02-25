@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace CycloneDX.BomRepoServer.Tests
@@ -7,13 +8,13 @@ namespace CycloneDX.BomRepoServer.Tests
     {
         public NeedsDockerForCITheory()
         {
-            if (IsMacOsRunner() && IsCI())
+            if (IsNotLinux() && IsCI())
             {
-                Skip = "Test skipped due to Docker missing in macOS runner";
+                Skip = "Test skipped due to Docker (with Linux containers) is missing in runner";
             }
         }
 
-        private static bool IsMacOsRunner() => Environment.GetEnvironmentVariable("RUNNER_OS") == "macOS";
+        private static bool IsNotLinux() => !RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
         private static bool IsCI() => Environment.GetEnvironmentVariable("CI") == "true";
     }
@@ -22,13 +23,13 @@ namespace CycloneDX.BomRepoServer.Tests
     {
         public NeedsDockerForCIFact()
         {
-            if (IsMacOsRunner() && IsCI())
+            if (IsNotLinux() && IsCI())
             {
-                Skip = "Test skipped due to Docker missing in macOS runner";
+                Skip = "Test skipped due to Docker (with Linux containers) is missing in runner";
             }
         }
 
-        private static bool IsMacOsRunner() => Environment.GetEnvironmentVariable("RUNNER_OS") == "macOS";
+        private static bool IsNotLinux() => !RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
 
         private static bool IsCI() => Environment.GetEnvironmentVariable("CI") == "true";
     }
