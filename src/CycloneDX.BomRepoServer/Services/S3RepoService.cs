@@ -20,9 +20,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
 using CycloneDX.BomRepoServer.Exceptions;
@@ -32,7 +32,8 @@ using CycloneDX.Protobuf;
 /*
  * TODO
  *
- * - Add storage metadata file
+ * - Add a hosted service that calls EnsureMetadataAsync on startup
+ * - Decide how to handle the situation where the bucket doesn't exist (healthcheck?)
  * 
  */
 namespace CycloneDX.BomRepoServer.Services
@@ -40,6 +41,7 @@ namespace CycloneDX.BomRepoServer.Services
     class S3RepoService : IRepoService
     {
         private const int InternalStorageVersion = 1;
+        private StorageMetadata _metadata;
         private readonly string _bucketName;
         private readonly IAmazonS3 _s3Client;
 
@@ -47,6 +49,47 @@ namespace CycloneDX.BomRepoServer.Services
         {
             _s3Client = s3Client;
             _bucketName = bucketName;
+        }
+
+        private async Task EnsureMetadataAsync(IAmazonS3 s3Client)
+        {
+            try
+            {
+                var metadataJsonObject = await s3Client.GetObjectAsync(_bucketName, "storage-metadata");
+
+                _metadata = await JsonSerializer.DeserializeAsync<StorageMetadata>(metadataJsonObject.ResponseStream);
+            }
+            catch (AmazonS3Exception amazonS3Exception)
+            {
+                if (amazonS3Exception.ErrorCode != "NoSuchKey")
+                {
+                    throw;
+                }
+            }
+
+            _metadata = new StorageMetadata
+            {
+                InternalStorageVersion = InternalStorageVersion
+            };
+
+            await using MemoryStream memoryStream = new MemoryStream();
+            await JsonSerializer.SerializeAsync(
+                memoryStream,
+                _metadata,
+                new JsonSerializerOptions
+                {
+                    WriteIndented = true
+                }
+            );
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            await s3Client.PutObjectAsync(new PutObjectRequest()
+            {
+                BucketName = _bucketName,
+                Key = "storage-metadata",
+                InputStream = memoryStream,
+                ContentType = "application/json",
+                CalculateContentMD5Header = true
+            });
         }
 
         public async Task DeleteAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken))
