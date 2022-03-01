@@ -119,8 +119,6 @@ namespace CycloneDX.BomRepoServer
 
             services.AddHostedService<CacheUpdateBackgroundService>();
             services.AddHostedService<RetentionBackgroundService>();
-            
-            await bomCacheService.UpdateCache();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
