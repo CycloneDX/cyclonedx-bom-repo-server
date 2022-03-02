@@ -36,16 +36,13 @@ namespace CycloneDX.BomRepoServer.Controllers
     {
         private readonly AllowedMethodsOptions _allowedMethods;
         private readonly CacheService _cacheService;
-        private readonly ILogger<BomController> _logger;
 
         public SearchController(
             AllowedMethodsOptions allowedMethods,
-            CacheService cacheService,
-            ILogger<BomController> logger)
+            CacheService cacheService)
         {
             _allowedMethods = allowedMethods;
             _cacheService = cacheService;
-            _logger = logger;
         }
 
         [HttpGet]
