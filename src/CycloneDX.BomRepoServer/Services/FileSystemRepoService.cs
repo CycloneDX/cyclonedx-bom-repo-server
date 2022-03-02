@@ -52,7 +52,7 @@ namespace CycloneDX.BomRepoServer.Services
 
         // The InternalStorageVersion is to support future changes to the underlying storage mechanism
         private const int InternalStorageVersion = 1;
-        private readonly StorageMetadata _metadata;
+        private StorageMetadata _metadata;
         private readonly IFileSystem _fileSystem;
         private readonly FileSystemRepoOptions _repoOptions;
         private readonly ILogger _logger;
@@ -62,32 +62,6 @@ namespace CycloneDX.BomRepoServer.Services
             _fileSystem = fileSystem;
             _repoOptions = repoOptions;
             _logger = logger;
-
-            if (!_fileSystem.Directory.Exists(_repoOptions.Directory))
-                _fileSystem.Directory.CreateDirectory(_repoOptions.Directory);
-
-            var metadataFilename = _fileSystem.Path.Join(_repoOptions.Directory, "storage-metadata");
-            if (_fileSystem.File.Exists(metadataFilename))
-            {
-                var metadataJson = _fileSystem.File.ReadAllText(metadataFilename);
-                _metadata = JsonSerializer.Deserialize<StorageMetadata>(metadataJson);
-            }
-            else
-            {
-                _metadata = new StorageMetadata
-                {
-                    InternalStorageVersion = InternalStorageVersion
-                };
-                
-                var metadataJson = JsonSerializer.Serialize(
-                    _metadata,
-                    new JsonSerializerOptions
-                    {
-                        WriteIndented = true,
-                    });
-                
-                _fileSystem.File.WriteAllText(metadataFilename, metadataJson);
-            }
         }
 
         public async IAsyncEnumerable<Bom> RetrieveAllAsync(string serialNumber, [EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
@@ -178,7 +152,38 @@ namespace CycloneDX.BomRepoServer.Services
             }, cancellationToken);
             
         }
-        
+
+        public Task EnsureMetadataAsync()
+        {
+            if (!_fileSystem.Directory.Exists(_repoOptions.Directory))
+                _fileSystem.Directory.CreateDirectory(_repoOptions.Directory);
+
+            var metadataFilename = _fileSystem.Path.Join(_repoOptions.Directory, "storage-metadata");
+            if (_fileSystem.File.Exists(metadataFilename))
+            {
+                var metadataJson = _fileSystem.File.ReadAllText(metadataFilename);
+                _metadata = JsonSerializer.Deserialize<StorageMetadata>(metadataJson);
+            }
+            else
+            {
+                _metadata = new StorageMetadata
+                {
+                    InternalStorageVersion = InternalStorageVersion
+                };
+                
+                var metadataJson = JsonSerializer.Serialize(
+                    _metadata,
+                    new JsonSerializerOptions
+                    {
+                        WriteIndented = true,
+                    });
+                
+                _fileSystem.File.WriteAllText(metadataFilename, metadataJson);
+            }
+
+            return Task.CompletedTask;
+        }
+
         public Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.Run(() =>

@@ -28,6 +28,7 @@ using Amazon.S3.Model;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.Models.v1_3;
 using CycloneDX.Protobuf;
+using Microsoft.Extensions.Hosting;
 
 /*
  * TODO
@@ -51,13 +52,13 @@ namespace CycloneDX.BomRepoServer.Services
             _bucketName = bucketName;
         }
 
-        private async Task EnsureMetadataAsync(IAmazonS3 s3Client)
+        public async Task EnsureMetadataAsync()
         {
             try
             {
-                var metadataJsonObject = await s3Client.GetObjectAsync(_bucketName, "storage-metadata");
-
+                var metadataJsonObject = await _s3Client.GetObjectAsync(_bucketName, "storage-metadata");
                 _metadata = await JsonSerializer.DeserializeAsync<StorageMetadata>(metadataJsonObject.ResponseStream);
+                return;
             }
             catch (AmazonS3Exception amazonS3Exception)
             {
@@ -82,7 +83,7 @@ namespace CycloneDX.BomRepoServer.Services
                 }
             );
             memoryStream.Seek(0, SeekOrigin.Begin);
-            await s3Client.PutObjectAsync(new PutObjectRequest()
+            await _s3Client.PutObjectAsync(new PutObjectRequest()
             {
                 BucketName = _bucketName,
                 Key = "storage-metadata",

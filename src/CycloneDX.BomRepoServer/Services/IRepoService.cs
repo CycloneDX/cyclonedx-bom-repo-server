@@ -35,5 +35,6 @@ namespace CycloneDX.BomRepoServer.Services
         Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
         Task<CycloneDX.Models.v1_3.Bom> StoreAsync(CycloneDX.Models.v1_3.Bom bom, CancellationToken cancellationToken = default(CancellationToken));
         Task StoreOriginalAsync(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken));
+        Task EnsureMetadataAsync();
     }
 }
