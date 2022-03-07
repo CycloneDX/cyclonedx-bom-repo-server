@@ -15,14 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
-using System;
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
-using CycloneDX.BomRepoServer.Controllers;
-using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
@@ -32,8 +28,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 {
     public class RetentionServiceTests
     {
-        [Fact]
-        public async Task Retention_Removes_ExtraBomVersions()
+        private async Task<IRepoService> CreateRepoService()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -41,6 +36,14 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
+            await repoService.PostConstructAsync();
+            return repoService;
+        }
+        
+        [Fact]
+        public async Task Retention_Removes_ExtraBomVersions()
+        {
+            var repoService = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",

@@ -32,24 +32,8 @@ using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Services
 {
-    class StorageMetadata
-    {
-        public int InternalStorageVersion { get; set; } 
-    }
-
-    public class OriginalBom : IDisposable
-    {
-        public Format Format { get; set; }
-        public SpecificationVersion SpecificationVersion { get; set; }
-        public Stream BomStream { get; set; }
-
-        public void Dispose() => BomStream.Dispose();
-    }
-    
     public class FileSystemRepoService : IRepoService
     {
-        private const string InvalidFilePathSegmentCharacters = "<>:\"/\\|?*";
-
         // The InternalStorageVersion is to support future changes to the underlying storage mechanism
         private const int InternalStorageVersion = 1;
         private StorageMetadata _metadata;
@@ -153,7 +137,7 @@ namespace CycloneDX.BomRepoServer.Services
             
         }
 
-        public Task EnsureMetadataAsync()
+        public async Task PostConstructAsync()
         {
             if (!_fileSystem.Directory.Exists(_repoOptions.Directory))
                 _fileSystem.Directory.CreateDirectory(_repoOptions.Directory);
@@ -161,7 +145,7 @@ namespace CycloneDX.BomRepoServer.Services
             var metadataFilename = _fileSystem.Path.Join(_repoOptions.Directory, "storage-metadata");
             if (_fileSystem.File.Exists(metadataFilename))
             {
-                var metadataJson = _fileSystem.File.ReadAllText(metadataFilename);
+                var metadataJson = await _fileSystem.File.ReadAllTextAsync(metadataFilename);
                 _metadata = JsonSerializer.Deserialize<StorageMetadata>(metadataJson);
             }
             else
@@ -178,10 +162,8 @@ namespace CycloneDX.BomRepoServer.Services
                         WriteIndented = true,
                     });
                 
-                _fileSystem.File.WriteAllText(metadataFilename, metadataJson);
+                await _fileSystem.File.WriteAllTextAsync(metadataFilename, metadataJson);
             }
-
-            return Task.CompletedTask;
         }
 
         public Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken))
@@ -320,7 +302,7 @@ namespace CycloneDX.BomRepoServer.Services
 
         private string BomBaseDirectory()
         {
-            return _fileSystem.Path.Combine(_repoOptions.Directory, $"v{InternalStorageVersion}");
+            return _fileSystem.Path.Combine(_repoOptions.Directory, $"v{_metadata.InternalStorageVersion}");
         }
 
         private string BomInstanceBaseDirectory(string serialNumber)

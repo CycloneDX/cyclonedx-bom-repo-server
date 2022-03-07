@@ -18,11 +18,26 @@
 //TODO need to make use of async methods once suitable methods have been added to the core library
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace CycloneDX.BomRepoServer.Services
 {
+    class StorageMetadata
+    {
+        public int InternalStorageVersion { get; set; } 
+    }
+
+    public class OriginalBom : IDisposable
+    {
+        public Format Format { get; set; }
+        public SpecificationVersion SpecificationVersion { get; set; }
+        public Stream BomStream { get; set; }
+
+        public void Dispose() => BomStream.Dispose();
+    }
+    
     public interface IRepoService
     {
         Task DeleteAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
@@ -35,6 +50,6 @@ namespace CycloneDX.BomRepoServer.Services
         Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
         Task<CycloneDX.Models.v1_3.Bom> StoreAsync(CycloneDX.Models.v1_3.Bom bom, CancellationToken cancellationToken = default(CancellationToken));
         Task StoreOriginalAsync(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken));
-        Task EnsureMetadataAsync();
+        Task PostConstructAsync();
     }
 }

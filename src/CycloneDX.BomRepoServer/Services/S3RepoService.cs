@@ -28,12 +28,10 @@ using Amazon.S3.Model;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.Models.v1_3;
 using CycloneDX.Protobuf;
-using Microsoft.Extensions.Hosting;
 
 /*
  * TODO
  *
- * - Add a hosted service that calls EnsureMetadataAsync on startup
  * - Decide how to handle the situation where the bucket doesn't exist (healthcheck?)
  * 
  */
@@ -52,7 +50,7 @@ namespace CycloneDX.BomRepoServer.Services
             _bucketName = bucketName;
         }
 
-        public async Task EnsureMetadataAsync()
+        public async Task PostConstructAsync()
         {
             try
             {
@@ -370,7 +368,7 @@ namespace CycloneDX.BomRepoServer.Services
 
         private string BomBaseDirectory()
         {
-            return $"v{InternalStorageVersion}";
+            return $"v{_metadata.InternalStorageVersion}";
         }
 
         private string ReplaceInvalidFilepathSegmentCharacters(string filePathSegment)

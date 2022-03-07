@@ -15,14 +15,10 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
-using System;
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
-using CycloneDX.BomRepoServer.Controllers;
-using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
@@ -32,8 +28,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 {
     public class CacheServiceTests
     {
-        [Fact]
-        public async void SearchByGroupName_ReturnsAll()
+        private async Task<IRepoService> CreateRepoService()
         {
             var mfs = new MockFileSystem();
             var options = new FileSystemRepoOptions
@@ -41,6 +36,14 @@ namespace CycloneDX.BomRepoServer.Tests.Services
                 Directory = "repo"
             };
             var repoService = new FileSystemRepoService(mfs, options);
+            await repoService.PostConstructAsync();
+            return repoService;
+        }
+        
+        [Fact]
+        public async void SearchByGroupName_ReturnsAll()
+        {
+            var repoService = await CreateRepoService();
             await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -114,12 +117,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async void SearchByName_ReturnsAll()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var repoService = new FileSystemRepoService(mfs, options);
+            var repoService = await CreateRepoService();
             await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -193,12 +191,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async void SearchByVersion_ReturnsAll()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var repoService = new FileSystemRepoService(mfs, options);
+            var repoService = await CreateRepoService();
             await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -272,12 +265,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async void CompositeSearch_ReturnsSingle()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var repoService = new FileSystemRepoService(mfs, options);
+            var repoService = await CreateRepoService();
             await repoService.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",

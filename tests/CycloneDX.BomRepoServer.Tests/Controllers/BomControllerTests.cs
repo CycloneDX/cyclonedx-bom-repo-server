@@ -15,49 +15,54 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
-using System;
 using System.Collections.Generic;
-using System.IO;
-using System.IO.Abstractions;
-using System.IO.Abstractions.TestingHelpers;
-using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
-using CycloneDX.BomRepoServer.Controllers;
-using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
 using CycloneDX.Models.v1_3;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CycloneDX.BomRepoServer.Tests.Controllers
 {
     public class BomControllerTests
     {
-        private HttpClient GetWebApplicationClient(string repoDirectory, AllowedMethodsOptions allowedMethods)
+        private HttpClient client;
+        private FileSystemRepoService service;
+
+        private async Task ConfigureTestServer(string repoDirectory, AllowedMethodsOptions allowedMethods)
         {
             var factory = new WebApplicationFactory<Startup>().WithWebHostBuilder(builder =>
             {
                 builder.ConfigureAppConfiguration((context, configBuilder) =>
-                {
-                    configBuilder.AddInMemoryCollection(
-                        new Dictionary<string, string>
-                        {
-                            { "Repo:StorageType", "FileSystem" },
-                            { "Repo:Options:Directory", repoDirectory },
-                            { "AllowedMethods:Get", allowedMethods.Get ? "true" : "false" },
-                        });
-                });
+                    {
+                        configBuilder.AddInMemoryCollection(
+                            new Dictionary<string, string>
+                            {
+                                {"Repo:StorageType", "FileSystem"},
+                                {"Repo:Options:Directory", repoDirectory},
+                                {"AllowedMethods:Get", allowedMethods.Get ? "true" : "false"},
+                            });
+                    })
+                    .ConfigureTestServices(collection =>
+                    {
+                        collection.AddSingleton<RepoMetadataHostedService>();
+                    });
             });
-            return factory.CreateClient();
+            await factory.Services.GetRequiredService<RepoMetadataHostedService>().StartAsync(CancellationToken.None);
+            service = factory.Services.GetRequiredService<FileSystemRepoService>();
+            client = factory.CreateClient();
         }
-        
+
         [Theory]
         [InlineData("text/xml", null)]
         [InlineData("application/xml", null)]
@@ -75,20 +80,14 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         public async Task GetBom_ReturnsCorrectContentType(string mediaType, string version)
         {
             using var tmpDirectory = new TempDirectory();
-
-            var options = new FileSystemRepoOptions
-            {
-                Directory = tmpDirectory.DirectoryPath
-            };
-            var service = new FileSystemRepoService(new FileSystem(), options);
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1
             };
             await service.StoreAsync(bom);
-
-            var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
 
             var request = new HttpRequestMessage(HttpMethod.Get, $"/bom?serialNumber={bom.SerialNumber}&version={bom.Version}");
             if (version != null)
@@ -134,19 +133,12 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         public async Task PostBom_StoresBom(string mediaType, string version)
         {
             using var tmpDirectory = new TempDirectory();
-
-            var options = new FileSystemRepoOptions
-            {
-                Directory = tmpDirectory.DirectoryPath
-            };
-            var service = new FileSystemRepoService(new FileSystem(), options);
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1
             };
-
-            var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Post = true });
 
             var contentType = mediaType;
             if (version != null)
@@ -193,13 +185,12 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         {
             Assert.True(Format.TryParse(format, true, out Format parsedFormat));
             using var tmpDirectory = new TempDirectory();
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
 
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
             };
-
-            var client = GetWebApplicationClient(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true, Post = true });
 
             var contentType = MediaTypes.GetMediaType(parsedFormat);
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);

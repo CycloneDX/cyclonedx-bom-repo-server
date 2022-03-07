@@ -16,7 +16,6 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
 using System;
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
@@ -32,6 +31,18 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 {
     public class FileSystemRepoServiceTests
     {
+        private async Task<IRepoService> CreateRepoService()
+        {
+            var mfs = new MockFileSystem();
+            var options = new FileSystemRepoOptions
+            {
+                Directory = "repo"
+            };
+            var repoService = new FileSystemRepoService(mfs, options);
+            await repoService.PostConstructAsync();
+            return repoService;
+        }
+        
         [Theory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
         [InlineData("{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
@@ -46,12 +57,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task GetAllBomSerialNumbers_ReturnsAll()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -81,12 +87,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task RetrieveAll_ReturnsAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -110,12 +111,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task RetrieveLatest_ReturnsLatestVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -136,12 +132,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task StoreBom_StoresSpecificVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -162,12 +153,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [InlineData(Format.Protobuf)]
         public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
@@ -186,12 +172,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task StoreClashingBomVersion_ThrowsException()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -206,12 +187,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task StoreBomWithoutVersion_SetsVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid()
@@ -230,12 +206,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -259,12 +230,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task Delete_DeletesSpecificVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -286,12 +252,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task Delete_DeletesBomsFromAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
@@ -316,12 +277,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         [Fact]
         public async Task DeleteAll_DeletesAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new FileSystemRepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new FileSystemRepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
