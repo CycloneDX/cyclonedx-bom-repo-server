@@ -26,16 +26,11 @@ using System.Threading.Tasks;
 using Amazon.Runtime;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.S3.Util;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.Models.v1_3;
 using CycloneDX.Protobuf;
 
-/*
- * TODO
- *
- * - Decide how to handle the situation where the bucket doesn't exist (healthcheck?)
- * 
- */
 namespace CycloneDX.BomRepoServer.Services
 {
     class S3RepoService : IRepoService
@@ -53,6 +48,14 @@ namespace CycloneDX.BomRepoServer.Services
 
         public async Task PostConstructAsync()
         {
+            if (!await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, _bucketName))
+            {
+                await _s3Client.PutBucketAsync(new PutBucketRequest
+                {
+                    BucketName = _bucketName,
+                });
+            }
+
             try
             {
                 var metadataJsonObject = await _s3Client.GetObjectAsync(_bucketName, "storage-metadata");
