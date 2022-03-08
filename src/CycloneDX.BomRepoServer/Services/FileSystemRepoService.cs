@@ -28,7 +28,6 @@ using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.Models.v1_3;
 using CycloneDX.Protobuf;
-using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Services
 {
@@ -39,45 +38,41 @@ namespace CycloneDX.BomRepoServer.Services
         private StorageMetadata _metadata;
         private readonly IFileSystem _fileSystem;
         private readonly FileSystemRepoOptions _repoOptions;
-        private readonly ILogger _logger;
 
-        public FileSystemRepoService(IFileSystem fileSystem, FileSystemRepoOptions repoOptions, ILogger logger = null)
+        public FileSystemRepoService(IFileSystem fileSystem, FileSystemRepoOptions repoOptions)
         {
             _fileSystem = fileSystem;
             _repoOptions = repoOptions;
-            _logger = logger;
         }
 
-        public async IAsyncEnumerable<Bom> RetrieveAllAsync(string serialNumber, [EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
+        public IAsyncEnumerable<Bom> RetrieveAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken))
         {
-            await foreach (var version in GetAllVersionsAsync(serialNumber, cancellationToken))
-            {
-                yield return await RetrieveAsync(serialNumber, version, cancellationToken);
-            }
+            return GetAllVersionsAsync(serialNumber, cancellationToken)
+                .SelectAwait(async version => await RetrieveAsync(serialNumber, version, cancellationToken));
         }
 
         public Task<Bom> RetrieveAsync(string serialNumber, int? version = null, CancellationToken cancellationToken = default(CancellationToken))
         {
-            return Task.Run( async () =>
+            return Task.Run(async () =>
             {
-            if (!version.HasValue) version = await GetLatestVersion(serialNumber, cancellationToken);
-            if (!version.HasValue) return null;
-            
-            var filename = BomFilename(serialNumber, version.Value);
-            if (!_fileSystem.File.Exists(filename)) return null;
+                if (!version.HasValue) version = await GetLatestVersion(serialNumber, cancellationToken);
+                if (!version.HasValue) return null;
+
+                var filename = BomFilename(serialNumber, version.Value);
+                if (!_fileSystem.File.Exists(filename)) return null;
                 await using var fs = _fileSystem.FileStream.Create(filename, FileMode.Open,
                     FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
                 var bom = Deserializer.Deserialize(fs);
                 return bom;
             }, cancellationToken);
         }
-        
+
         public Task<Bom> StoreAsync(Bom bom, CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.Run(async () =>
             {
                 if (string.IsNullOrEmpty(bom.SerialNumber)) bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
-            
+
                 if (!bom.Version.HasValue)
                 {
                     var latestVersion = await GetLatestVersion(bom.SerialNumber, cancellationToken);
@@ -90,7 +85,7 @@ namespace CycloneDX.BomRepoServer.Services
                         bom.Version = 1;
                     }
                 }
-                
+
                 var directoryName = BomDirectory(bom.SerialNumber, bom.Version.Value);
                 if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
 
@@ -98,7 +93,7 @@ namespace CycloneDX.BomRepoServer.Services
 
                 try
                 {
-                    using var fs = _fileSystem.File.Open(fileName, FileMode.CreateNew, FileAccess.Write);
+                    await using var fs = _fileSystem.File.Open(fileName, FileMode.CreateNew, FileAccess.Write);
                     Serializer.Serialize(bom, fs);
                 }
                 catch (IOException)
@@ -111,12 +106,12 @@ namespace CycloneDX.BomRepoServer.Services
                 return bom;
             }, cancellationToken);
         }
-        
+
         public Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken))
         {
             var directoryName = BomDirectory(serialNumber, version);
             if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
-        
+
             var fileName = OriginalBomFilename(serialNumber, version, format, specificationVersion);
 
             return Task.Run(async () =>
@@ -134,7 +129,6 @@ namespace CycloneDX.BomRepoServer.Services
                     throw;
                 }
             }, cancellationToken);
-            
         }
 
         public async Task PostConstructAsync()
@@ -154,14 +148,14 @@ namespace CycloneDX.BomRepoServer.Services
                 {
                     InternalStorageVersion = InternalStorageVersion
                 };
-                
+
                 var metadataJson = JsonSerializer.Serialize(
                     _metadata,
                     new JsonSerializerOptions
                     {
                         WriteIndented = true,
                     });
-                
+
                 await _fileSystem.File.WriteAllTextAsync(metadataFilename, metadataJson);
             }
         }
@@ -180,12 +174,12 @@ namespace CycloneDX.BomRepoServer.Services
                         var baseFilename = _fileSystem.Path.GetFileName(file);
                         var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
                         var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
-                    
+
                         var formatString = baseFilename.Substring(lastBreak + 1);
                         var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
 
-                        if (Format.TryParse(formatString, true, out Format parsedFormat)
-                            && SpecificationVersion.TryParse(specificationVersion, true, out SpecificationVersion parsedSpecificationVersion))
+                        if (Enum.TryParse(formatString, true, out Format parsedFormat)
+                            && Enum.TryParse(specificationVersion, true, out SpecificationVersion parsedSpecificationVersion))
                         {
                             return Task.FromResult(new OriginalBom
                             {
@@ -199,9 +193,8 @@ namespace CycloneDX.BomRepoServer.Services
 
                 return null;
             }, cancellationToken);
-            
         }
-        
+
         public Task DeleteAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.Run(() =>
@@ -210,7 +203,7 @@ namespace CycloneDX.BomRepoServer.Services
                 _fileSystem.Directory.Delete(directoryName, recursive: true);
             }, cancellationToken);
         }
-        
+
         public Task DeleteAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken))
         {
             return Task.Run(() =>
@@ -218,7 +211,6 @@ namespace CycloneDX.BomRepoServer.Services
                 _fileSystem.Directory.Delete(BomDirectory(serialNumber, version), recursive: true);
                 return Task.CompletedTask;
             }, cancellationToken);
-
         }
 
         private async Task<int?> GetLatestVersion(string serialNumber, CancellationToken cancellationToken = default(CancellationToken))
@@ -257,8 +249,7 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        public async IAsyncEnumerable<string> GetAllBomSerialNumbersAsync(
-            [EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
+        public async IAsyncEnumerable<string> GetAllBomSerialNumbersAsync([EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
         {
             var items = await Task.Run(() =>
             {
@@ -323,7 +314,7 @@ namespace CycloneDX.BomRepoServer.Services
         {
             return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), "bom.cdx");
         }
-        
+
         private string OriginalBomFilename(string serialNumber, int version, Format format, SpecificationVersion specificationVersion)
         {
             return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), $"bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}");
