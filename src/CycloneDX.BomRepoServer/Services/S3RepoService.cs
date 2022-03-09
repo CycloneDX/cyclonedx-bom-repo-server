@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
@@ -95,70 +97,47 @@ namespace CycloneDX.BomRepoServer.Services
             });
         }
 
-        public async Task DeleteAsync(string serialNumber, int version,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task DeleteAsync(string serialNumber, int version, CancellationToken cancellationToken = default)
         {
-            var prefix = BomDirectory(serialNumber, version);
-            var objects = SelectObjects(prefix);
-            var buffer = new List<KeyVersion>();
-            await foreach (var s3Object in objects)
-            {
-                buffer.Add(new KeyVersion {Key = s3Object.Key});
-                if (buffer.Count > 999)
+            await ListObjects(BomDirectory(serialNumber, version))
+                .Select(s3Object => new KeyVersion {Key = s3Object.Key})
+                .ToObservable()
+                .Buffer(999)
+                .Select(list =>
                 {
-                    await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
-                    {
-                        BucketName = _bucketName,
-                        Objects = buffer.ToList()
-                    }, cancellationToken);
-                    buffer.Clear();
-                }
-            }
-
-            if (buffer.Count > 0)
-            {
-                await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
-                {
-                    BucketName = _bucketName,
-                    Objects = buffer.ToList()
-                }, cancellationToken);
-            }
+                    return Observable.FromAsync(async () =>
+                        await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
+                        {
+                            BucketName = _bucketName,
+                            Objects = list.ToList()
+                        }, cancellationToken));
+                })
+                .Concat()
+                .ToTask(cancellationToken);
         }
 
-        public async Task DeleteAllAsync(string serialNumber,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task DeleteAllAsync(string serialNumber, CancellationToken cancellationToken = default)
         {
-            var prefix = BomInstanceBaseDirectory(serialNumber);
-            var objects = SelectObjects(prefix);
-            var buffer = new List<KeyVersion>();
-            await foreach (var s3Object in objects)
-            {
-                buffer.Add(new KeyVersion {Key = s3Object.Key});
-                if (buffer.Count > 999)
+            await ListObjects(BomInstanceBaseDirectory(serialNumber))
+                .Select(s3Object => new KeyVersion {Key = s3Object.Key})
+                .ToObservable()
+                .Buffer(999)
+                .Select(list =>
                 {
-                    await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
-                    {
-                        BucketName = _bucketName,
-                        Objects = buffer.ToList()
-                    }, cancellationToken);
-                    buffer.Clear();
-                }
-            }
-
-            if (buffer.Count > 0)
-            {
-                await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
-                {
-                    BucketName = _bucketName,
-                    Objects = buffer.ToList()
-                }, cancellationToken);
-            }
+                    return Observable.FromAsync(async () =>
+                        await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
+                        {
+                            BucketName = _bucketName,
+                            Objects = list.ToList()
+                        }, cancellationToken));
+                })
+                .Concat()
+                .ToTask(cancellationToken);
         }
 
-        public IAsyncEnumerable<string> GetAllBomSerialNumbersAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+        public IAsyncEnumerable<string> GetAllBomSerialNumbersAsync(CancellationToken cancellationToken = default)
         {
-            return SelectObjects()
+            return ListObjects()
                 .Where(s3Object => s3Object.Key.StartsWith("v1/urn_uuid_"))
                 .Select(s3Object =>
                 {
@@ -167,15 +146,13 @@ namespace CycloneDX.BomRepoServer.Services
                 });
         }
 
-        public IAsyncEnumerable<int> GetAllVersionsAsync(string serialNumber,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public IAsyncEnumerable<int> GetAllVersionsAsync(string serialNumber, CancellationToken cancellationToken = default)
         {
             var prefix = BomInstanceBaseDirectory(serialNumber);
-            return SelectObjects(prefix)
+            return ListObjects(prefix)
                 .Where(s3Object => s3Object.Key.EndsWith("bom.cdx"))
                 .Select(s3Object =>
                 {
-                    // TODO There are probably better ways to do this
                     var segments = s3Object.Key.Split('/', StringSplitOptions.RemoveEmptyEntries);
                     int.TryParse(segments[^2], out var result);
                     return result;
@@ -183,19 +160,13 @@ namespace CycloneDX.BomRepoServer.Services
                 .OrderBy(v => v);
         }
 
-        public async Task<DateTime> GetBomAgeAsync(string serialNumber, int version,
-            CancellationToken cancellationToken = default(CancellationToken)) // TODO Not covered by tests
+        public async Task<DateTime> GetBomAgeAsync(string serialNumber, int version, CancellationToken cancellationToken = default)
         {
-            var response = await _s3Client.GetObjectMetadataAsync(new GetObjectMetadataRequest
-            {
-                BucketName = _bucketName,
-                Key = BomFilename(serialNumber, version),
-            }, cancellationToken);
+            var response = await _s3Client.GetObjectMetadataAsync(_bucketName, BomFilename(serialNumber, version), cancellationToken);
             return response.LastModified;
         }
 
-        public async Task<Bom> RetrieveAsync(string serialNumber, int? version = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Bom> RetrieveAsync(string serialNumber, int? version = null, CancellationToken cancellationToken = default)
         {
             if (!version.HasValue) version = await GetLatestVersionAsync(serialNumber, cancellationToken);
             if (!version.HasValue) return null;
@@ -217,8 +188,7 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        public async IAsyncEnumerable<Bom> RetrieveAllAsync(string serialNumber,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default(CancellationToken))
+        public async IAsyncEnumerable<Bom> RetrieveAllAsync(string serialNumber, [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             await foreach (var version in GetAllVersionsAsync(serialNumber, cancellationToken))
             {
@@ -226,49 +196,40 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        public async Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default)
         {
             var prefix = BomDirectory(serialNumber, version);
-            var s3Object = await SelectObjects(prefix)
+            return await ListObjects(prefix)
                 .Where(s3Object => s3Object.Key.Contains("/bom.") && !s3Object.Key.EndsWith(".cdx"))
+                .SelectAwait(async s3Object =>
+                {
+                    var baseFilename = Path.GetFileName(s3Object.Key);
+                    if (baseFilename == null)
+                    {
+                        return null;
+                    }
+
+                    var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
+                    var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
+
+                    var formatString = baseFilename.Substring(lastBreak + 1);
+                    var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
+                    Enum.TryParse(formatString, true, out Format parsedFormat);
+                    Enum.TryParse(specificationVersion, true,
+                        out SpecificationVersion parsedSpecificationVersion);
+
+                    var getObjectResponse = await _s3Client.GetObjectAsync(_bucketName, s3Object.Key, cancellationToken);
+                    return new OriginalBom
+                    {
+                        Format = parsedFormat,
+                        SpecificationVersion = parsedSpecificationVersion,
+                        BomStream = getObjectResponse.ResponseStream
+                    };
+                })
                 .FirstOrDefaultAsync(cancellationToken);
-            if (s3Object == null)
-            {
-                return null;
-            }
-
-            var getObjectResponse = await _s3Client.GetObjectAsync(new GetObjectRequest
-            {
-                BucketName = _bucketName,
-                Key = s3Object.Key,
-            }, cancellationToken);
-
-            var baseFilename = Path.GetFileName(s3Object.Key);
-            if (baseFilename == null)
-            {
-                return null;
-            }
-
-            var firstBreak = baseFilename.IndexOf(".", StringComparison.InvariantCulture);
-            var lastBreak = baseFilename.LastIndexOf(".", StringComparison.InvariantCulture);
-
-            var formatString = baseFilename.Substring(lastBreak + 1);
-            var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
-
-            Enum.TryParse(formatString, true, out Format parsedFormat);
-            Enum.TryParse(specificationVersion, true,
-                out SpecificationVersion parsedSpecificationVersion);
-
-            return new OriginalBom
-            {
-                Format = parsedFormat,
-                SpecificationVersion = parsedSpecificationVersion,
-                BomStream = getObjectResponse.ResponseStream
-            };
         }
 
-        public async Task<Bom> StoreAsync(Bom bom, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Bom> StoreAsync(Bom bom, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(bom.SerialNumber)) bom.SerialNumber = "urn:uuid:" + Guid.NewGuid();
 
@@ -286,7 +247,7 @@ namespace CycloneDX.BomRepoServer.Services
             }
 
             var fileName = BomFilename(bom.SerialNumber, bom.Version.Value);
-            if (await KeyExists(fileName)) // TODO Implement with object locking in governance mode instead?
+            if (await KeyExists(fileName))
             {
                 throw new BomAlreadyExistsException();
             }
@@ -304,8 +265,7 @@ namespace CycloneDX.BomRepoServer.Services
             return bom;
         }
 
-        public async Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, Format format,
-            SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken))
+        public async Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default)
         {
             var fileName = OriginalBomFilename(serialNumber, version, format, specificationVersion);
             if (await KeyExists(fileName))
@@ -323,7 +283,7 @@ namespace CycloneDX.BomRepoServer.Services
             }, cancellationToken);
         }
 
-        private IPaginatedEnumerable<S3Object> SelectObjects(string prefix = "")
+        private IPaginatedEnumerable<S3Object> ListObjects(string prefix = "")
         {
             return _s3Client
                 .Paginators
@@ -372,8 +332,7 @@ namespace CycloneDX.BomRepoServer.Services
             return $"{BomDirectory(serialNumber, version)}/bom.cdx";
         }
 
-        private string OriginalBomFilename(string serialNumber, int version, Format format,
-            SpecificationVersion specificationVersion)
+        private string OriginalBomFilename(string serialNumber, int version, Format format, SpecificationVersion specificationVersion)
         {
             return
                 $"{BomDirectory(serialNumber, version)}/bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}";

@@ -16,7 +16,10 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
 using System;
+using System.IO;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Controllers;
 using CycloneDX.BomRepoServer.Exceptions;
@@ -25,7 +28,7 @@ using CycloneDX.BomRepoServer.Services;
 using CycloneDX.Models.v1_3;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Amazon;
+using CycloneDX.Xml;
 using DotNet.Testcontainers.Containers.Builders;
 using DotNet.Testcontainers.Containers.Modules;
 using DotNet.Testcontainers.Containers.WaitStrategies;
@@ -34,13 +37,58 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 {
     public class S3RepoServiceTests : IClassFixture<MinioFixture>, IAsyncLifetime
     {
-        private IAmazonS3 _s3Client;
         private readonly MinioFixture _minioFixture;
         private string _bucketName;
+        private IAmazonS3 _s3Client;
 
         public S3RepoServiceTests(MinioFixture minioFixture)
         {
             this._minioFixture = minioFixture;
+        }
+
+        public Task InitializeAsync()
+        {
+            _s3Client = _minioFixture.S3Client;
+            _bucketName = _minioFixture.BucketName;
+            return Task.CompletedTask;
+        }
+
+        async Task IAsyncLifetime.DisposeAsync()
+        {
+            try
+            {
+                await _s3Client.Paginators.ListObjectsV2(new ListObjectsV2Request
+                    {
+                        BucketName = _bucketName
+                    })
+                    .S3Objects
+                    .Select(s3Object => new KeyVersion {Key = s3Object.Key})
+                    .ToObservable()
+                    .Buffer(999)
+                    .Select(list =>
+                    {
+                        return Observable.FromAsync(async () =>
+                            await _s3Client.DeleteObjectsAsync(new DeleteObjectsRequest
+                            {
+                                BucketName = _bucketName,
+                                Objects = list.ToList()
+                            }));
+                    })
+                    .Concat()
+                    .ToTask();
+
+                await _s3Client.DeleteBucketAsync(new DeleteBucketRequest
+                {
+                    BucketName = _bucketName
+                });
+            }
+            catch (AmazonS3Exception amazonS3Exception)
+            {
+                if (!amazonS3Exception.Message.Equals("The specified bucket does not exist"))
+                {
+                    throw;
+                }
+            }
         }
 
         private async Task<IRepoService> CreateRepoService()
@@ -49,7 +97,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             await repoService.PostConstructAsync();
             return repoService;
         }
-        
+
         [NeedsDockerForCITheory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
         [InlineData("urn:uuid:{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
@@ -167,14 +215,12 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             await service.StoreOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format,
                 SpecificationVersion.v1_2);
 
-            using (var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1)) {
-                Assert.Equal(format, result.Format);
-                Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
-                using (var resultMS = new System.IO.MemoryStream()) {
-                    await result.BomStream.CopyToAsync(resultMS);
-                    Assert.Equal(bom, resultMS.ToArray());
-                }
-            };
+            using var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
+            Assert.Equal(format, result.Format);
+            Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
+            await using var memoryStream = new MemoryStream();
+            await result.BomStream.CopyToAsync(memoryStream);
+            Assert.Equal(bom, memoryStream.ToArray());
         }
 
         [NeedsDockerForCIFact]
@@ -227,7 +273,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             bom.Version = null;
             var returnedBom = await service.StoreAsync(bom);
 
-            var retrievedBom = await service.RetrieveAsync(returnedBom.SerialNumber, returnedBom.Version.Value);
+            var retrievedBom = await service.RetrieveAsync(returnedBom.SerialNumber, returnedBom.Version!.Value);
 
             Assert.Equal(bom.SerialNumber, returnedBom.SerialNumber);
             Assert.Equal(3, returnedBom.Version);
@@ -274,9 +320,35 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 
             var bomVersions = await service.GetAllVersionsAsync(bom.SerialNumber).ToListAsync();
 
-            Assert.Collection(bomVersions,
-                bomVersion => { Assert.Equal(2, bomVersion); }
+            Assert.Collection(bomVersions, bomVersion => { Assert.Equal(2, bomVersion); }
             );
+        }
+
+        [NeedsDockerForCIFact]
+        public async Task RetrieveAllAsync_EmptyDoesNotError()
+        {
+            var service = await CreateRepoService();
+
+            var bomVersions = await service.RetrieveAllAsync("no-boms").ToListAsync();
+
+            Assert.Empty(bomVersions);
+        }
+
+        [NeedsDockerForCIFact]
+        public async Task StoreOriginalAsync_DoesNotOverwriteExistingVersion()
+        {
+            var service = await CreateRepoService();
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                Version = 1,
+                SpecVersion = "1.3"
+            };
+            var memoryStream = new MemoryStream();
+            Serializer.Serialize(bom, memoryStream);
+            memoryStream.Seek(0, SeekOrigin.Begin);
+            Assert.Null(await Record.ExceptionAsync(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, Format.Xml, SpecificationVersion.v1_3)));
+            await Assert.ThrowsAsync<BomAlreadyExistsException>(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, Format.Xml, SpecificationVersion.v1_3));
         }
 
         [NeedsDockerForCIFact]
@@ -300,64 +372,41 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             Assert.Null(retrievedBom);
         }
 
-        public async Task InitializeAsync()
+        [NeedsDockerForCIFact]
+        public async Task PostConstructAsync_CreatesBucket()
         {
-            var s3TestContext = await _minioFixture.CreateS3TestContext();
-            _s3Client = s3TestContext.AmazonS3Client;
-            _bucketName = s3TestContext.bucketName;
+            var exception = await Record.ExceptionAsync(async () => await CreateRepoService());
+            Assert.Null(exception);
         }
 
-        async Task IAsyncLifetime.DisposeAsync()
+        [NeedsDockerForCIFact]
+        public async Task PostConstructAsync_DoesNotErrorWithExistingBucket()
         {
-            // List and delete all objects
-            ListObjectsRequest listRequest = new ListObjectsRequest
+            await _s3Client.PutBucketAsync(_bucketName);
+            var exception = await Record.ExceptionAsync(async () => await CreateRepoService());
+            Assert.Null(exception);
+        }
+
+        [NeedsDockerForCIFact]
+        public async Task GetBomAgeAsync_ProvidesValue()
+        {
+            var service = await CreateRepoService();
+            var bom = new Bom
             {
-                BucketName = _bucketName
+                SerialNumber = "urn:uuid:" + Guid.NewGuid(),
+                Version = 1,
             };
-
-            ListObjectsResponse listResponse;
-            do
-            {
-                // Get a list of objects
-                listResponse = await _s3Client.ListObjectsAsync(listRequest);
-                foreach (S3Object obj in listResponse.S3Objects)
-                {
-                    // Delete each object
-                    await _s3Client.DeleteObjectAsync(new DeleteObjectRequest
-                    {
-                        BucketName = _bucketName,
-                        Key = obj.Key
-                    });
-                }
-
-                // Set the marker property
-                listRequest.Marker = listResponse.NextMarker;
-            } while (listResponse.IsTruncated);
-
-            // Construct DeleteBucket request
-            DeleteBucketRequest request = new DeleteBucketRequest
-            {
-                BucketName = _bucketName
-            };
-
-            // Issue call
-            await _s3Client.DeleteBucketAsync(request);
+            await service.StoreAsync(bom);
+            var actual = await service.GetBomAgeAsync(bom.SerialNumber, bom.Version.Value);
+            Assert.True(actual.Ticks < DateTime.Now.Ticks);
         }
     }
 
     public class MinioFixture : IAsyncLifetime, IDisposable
     {
-        protected internal record S3TestContext(IAmazonS3 AmazonS3Client, string bucketName);
-
         private TestcontainersContainer _testContainer;
-        private AmazonS3Client _s3Client;
-        private string _bucketName;
-
-        protected internal async Task<S3TestContext> CreateS3TestContext()
-        {
-            await _s3Client.PutBucketAsync(_bucketName);
-            return new (_s3Client, _bucketName);
-        }
+        public AmazonS3Client S3Client { get; private set; }
+        public string BucketName { get; private set; }
 
         public async Task InitializeAsync()
         {
@@ -371,37 +420,34 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 
             _testContainer = testcontainersBuilder.Build();
             await _testContainer.StartAsync();
-            
+
             var mappedPort = _testContainer.GetMappedPublicPort(9000);
             var awsCredentials = new Amazon.Runtime.BasicAWSCredentials("minioadmin", "minioadmin");
             var s3Config = new AmazonS3Config
             {
                 ServiceURL = $"http://localhost:{mappedPort}",
                 ForcePathStyle = true // MUST be true to work correctly with MinIO server
-                
             };
-            AWSConfigsS3.UseSignatureVersion4 = true;
-            _s3Client = new AmazonS3Client(awsCredentials, s3Config);
-            _bucketName = "bomserver";
+            S3Client = new AmazonS3Client(awsCredentials, s3Config);
+            BucketName = $"bomserver{Guid.NewGuid()}";
         }
 
-        public void Dispose()
-        {
-            _s3Client?.Dispose();
-        }
-        
         public async Task DisposeAsync()
         {
-            try {
+            try
+            {
                 await _testContainer.StopAsync();
             }
-            #pragma warning disable CS0168
+#pragma warning disable CS0168
             catch (InvalidOperationException invalidOperationException)
-            #pragma warning restore CS0168
+#pragma warning restore CS0168
             {
             }
         }
 
-
+        public void Dispose()
+        {
+            S3Client?.Dispose();
+        }
     }
 }
