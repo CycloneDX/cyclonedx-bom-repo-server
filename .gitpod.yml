@@ -1,9 +1,11 @@
 image:
   file: .gitpod.Dockerfile
 
+# Refer to for reasons https://github.com/gitpod-io/template-dotnet-core-cli-csharp/commit/9d01b88fa900c7802103a13ca0cc18b2b02c4752
 tasks:
   - name: Restore dependencies
     init: |
+      mkdir -p /tmp/dotnet && curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 6.0 --install-dir /tmp/dotnet
       dotnet tool install --global dotnet-reportgenerator-globaltool
       dotnet restore
 vscode:
