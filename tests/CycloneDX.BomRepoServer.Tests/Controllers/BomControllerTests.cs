@@ -245,5 +245,17 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
 
             Assert.Equal(originalBomBytes, retrievedOriginalBom);
         }
+
+        [Theory]
+        [InlineData(" urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79")]
+        [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79 ")]
+        [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b7")]
+        [InlineData(" {3e671687-395b-41f5-a30f-a58921a69b79}")]
+        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b79} ")]
+        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b7}")]
+        public void ValidSerialNumber_RecognisesInvalidValues(string serialNumber)
+        {
+            Assert.False(BomController.ValidSerialNumber(serialNumber));
+        }
     }
 }
