@@ -43,7 +43,7 @@ namespace CycloneDX.BomRepoServer.Controllers
     public class BomController : ControllerBase
     {
         private static readonly Regex SerialNumberRegex = new Regex(
-            @"^urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\})$");
+            @"^(urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}))$");
 
         private readonly AllowedMethodsOptions _allowedMethods;
         private readonly RepoService _repoService;
