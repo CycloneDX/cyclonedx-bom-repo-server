@@ -9,5 +9,6 @@ USER gitpod
 #ENV PATH=$PATH:/home/gitpod/dotnet
 
 # Refer to for reasons https://github.com/gitpod-io/template-dotnet-core-cli-csharp/commit/9d01b88fa900c7802103a13ca0cc18b2b02c4752
-ENV DOTNET_ROOT=/tmp/dotnet
-ENV PATH=/tmp/dotnet:$PATH
+ENV DOTNET_ROOT=/workspace/local/dotnet
+ENV PATH=$DOTNET_ROOT:$PATH
+ENV PATH=/workspace/local/bin:$PATH
