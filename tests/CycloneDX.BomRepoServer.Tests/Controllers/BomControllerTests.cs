@@ -23,6 +23,7 @@ using System.Text;
 using System.Threading;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
 using System.Threading.Tasks;
+using CycloneDX.BomRepoServer.Controllers;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;

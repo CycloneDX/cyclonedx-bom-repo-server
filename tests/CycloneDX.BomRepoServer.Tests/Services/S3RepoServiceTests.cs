@@ -100,7 +100,7 @@ namespace CycloneDX.BomRepoServer.Tests.Services
 
         [NeedsDockerForCITheory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
-        [InlineData("urn:uuid:{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
+        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
         [InlineData("urn_uuid_3e671687-395b-41f5-a30f-a58921a69b70", false)]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b7", false)]
         [InlineData("abc", false)]
