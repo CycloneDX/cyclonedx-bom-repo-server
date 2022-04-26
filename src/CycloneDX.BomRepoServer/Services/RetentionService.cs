@@ -21,7 +21,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Models;
 using CycloneDX.BomRepoServer.Options;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 

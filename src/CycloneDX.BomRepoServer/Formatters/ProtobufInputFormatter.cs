@@ -31,12 +31,13 @@ namespace CycloneDX.BomRepoServer.Formatters
         {
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/octet-stream"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.4"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.3"));
             SupportedEncodings.Add(Encoding.UTF8);
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
+        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.Bom);
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
         {
@@ -48,7 +49,7 @@ namespace CycloneDX.BomRepoServer.Formatters
                 await context.HttpContext.Request.Body.CopyToAsync(ms);
                 ms.Position = 0;
                 
-                var bom = Protobuf.Deserializer.Deserialize(ms);
+                var bom = Protobuf.Serializer.Deserialize(ms);
                 return await InputFormatterResult.SuccessAsync(bom);
             }
             catch (Exception)

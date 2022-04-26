@@ -25,7 +25,7 @@ using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
@@ -148,10 +148,10 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Theory]
-        [InlineData(Format.Xml)]
-        [InlineData(Format.Json)]
-        [InlineData(Format.Protobuf)]
-        public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
+        [InlineData(SerializationFormat.Xml)]
+        [InlineData(SerializationFormat.Json)]
+        [InlineData(SerializationFormat.Protobuf)]
+        public async Task StoreOriginalBom_RetrievesOriginalContent(SerializationFormat format)
         {
             var service = await CreateRepoService();
             var bom = new byte[] {32, 64, 128};
