@@ -105,7 +105,7 @@ The server storage type is configured under the `Repo` section. Currently we sup
       "AccessKey": "bomserver-minioadmin",
       "SecretKey": "bomserver-minioadmin",
       "ForcePathStyle": true,
-      "UseHttp": true,
+      "UseHttp": false,
       "BucketName": "bomserver"
   }
 }
