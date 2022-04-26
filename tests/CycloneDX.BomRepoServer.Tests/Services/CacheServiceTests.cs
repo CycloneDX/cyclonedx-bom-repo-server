@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {

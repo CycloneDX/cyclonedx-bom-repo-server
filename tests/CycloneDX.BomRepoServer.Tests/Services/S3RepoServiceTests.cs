@@ -25,7 +25,7 @@ using CycloneDX.BomRepoServer.Controllers;
 using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Services;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using Amazon.S3;
 using Amazon.S3.Model;
 using CycloneDX.Xml;
@@ -203,10 +203,10 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
 
         [NeedsDockerForCITheory]
-        [InlineData(Format.Xml)]
-        [InlineData(Format.Json)]
-        [InlineData(Format.Protobuf)]
-        public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
+        [InlineData(SerializationFormat.Xml)]
+        [InlineData(SerializationFormat.Json)]
+        [InlineData(SerializationFormat.Protobuf)]
+        public async Task StoreOriginalBom_RetrievesOriginalContent(SerializationFormat format)
         {
             var service = await CreateRepoService();
             var bom = new byte[] {32, 64, 128};
@@ -342,13 +342,13 @@ namespace CycloneDX.BomRepoServer.Tests.Services
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
-                SpecVersion = "1.3"
+                SpecVersion = SpecificationVersion.v1_3,
             };
             var memoryStream = new MemoryStream();
             Serializer.Serialize(bom, memoryStream);
             memoryStream.Seek(0, SeekOrigin.Begin);
-            Assert.Null(await Record.ExceptionAsync(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, Format.Xml, SpecificationVersion.v1_3)));
-            await Assert.ThrowsAsync<BomAlreadyExistsException>(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, Format.Xml, SpecificationVersion.v1_3));
+            Assert.Null(await Record.ExceptionAsync(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, SerializationFormat.Xml, SpecificationVersion.v1_3)));
+            await Assert.ThrowsAsync<BomAlreadyExistsException>(async () => await service.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, memoryStream, SerializationFormat.Xml, SpecificationVersion.v1_3));
         }
 
         [NeedsDockerForCIFact]

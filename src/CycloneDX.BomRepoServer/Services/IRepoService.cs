@@ -31,7 +31,7 @@ namespace CycloneDX.BomRepoServer.Services
 
     public class OriginalBom : IDisposable
     {
-        public Format Format { get; set; }
+        public SerializationFormat Format { get; set; }
         public SpecificationVersion SpecificationVersion { get; set; }
         public Stream BomStream { get; set; }
 
@@ -45,11 +45,11 @@ namespace CycloneDX.BomRepoServer.Services
         IAsyncEnumerable<string> GetAllBomSerialNumbersAsync(CancellationToken cancellationToken = default(CancellationToken));
         IAsyncEnumerable<int> GetAllVersionsAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
         Task<DateTime> GetBomAgeAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
-        Task<CycloneDX.Models.v1_3.Bom> RetrieveAsync(string serialNumber, int? version = null, CancellationToken cancellationToken = default(CancellationToken));
-        IAsyncEnumerable<CycloneDX.Models.v1_3.Bom> RetrieveAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
+        Task<CycloneDX.Models.Bom> RetrieveAsync(string serialNumber, int? version = null, CancellationToken cancellationToken = default(CancellationToken));
+        IAsyncEnumerable<CycloneDX.Models.Bom> RetrieveAllAsync(string serialNumber, CancellationToken cancellationToken = default(CancellationToken));
         Task<OriginalBom> RetrieveOriginalAsync(string serialNumber, int version, CancellationToken cancellationToken = default(CancellationToken));
-        Task<CycloneDX.Models.v1_3.Bom> StoreAsync(CycloneDX.Models.v1_3.Bom bom, CancellationToken cancellationToken = default(CancellationToken));
-        Task StoreOriginalAsync(string serialNumber, int version, System.IO.Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken));
+        Task<CycloneDX.Models.Bom> StoreAsync(CycloneDX.Models.Bom bom, CancellationToken cancellationToken = default(CancellationToken));
+        Task StoreOriginalAsync(string serialNumber, int version, System.IO.Stream bomStream, SerializationFormat format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken));
         Task PostConstructAsync();
     }
 }

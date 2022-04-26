@@ -26,7 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Exceptions;
 using CycloneDX.BomRepoServer.Options;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using CycloneDX.Protobuf;
 
 namespace CycloneDX.BomRepoServer.Services
@@ -62,7 +62,7 @@ namespace CycloneDX.BomRepoServer.Services
                 if (!_fileSystem.File.Exists(filename)) return null;
                 await using var fs = _fileSystem.FileStream.Create(filename, FileMode.Open,
                     FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous);
-                var bom = Deserializer.Deserialize(fs);
+                var bom = Serializer.Deserialize(fs);
                 return bom;
             }, cancellationToken);
         }
@@ -107,7 +107,7 @@ namespace CycloneDX.BomRepoServer.Services
             }, cancellationToken);
         }
 
-        public Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken))
+        public Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, SerializationFormat format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default(CancellationToken))
         {
             var directoryName = BomDirectory(serialNumber, version);
             if (!_fileSystem.Directory.Exists(directoryName)) _fileSystem.Directory.CreateDirectory(directoryName);
@@ -178,7 +178,7 @@ namespace CycloneDX.BomRepoServer.Services
                         var formatString = baseFilename.Substring(lastBreak + 1);
                         var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
 
-                        if (Enum.TryParse(formatString, true, out Format parsedFormat)
+                        if (Enum.TryParse(formatString, true, out SerializationFormat parsedFormat)
                             && Enum.TryParse(specificationVersion, true, out SpecificationVersion parsedSpecificationVersion))
                         {
                             return Task.FromResult(new OriginalBom
@@ -315,7 +315,7 @@ namespace CycloneDX.BomRepoServer.Services
             return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), "bom.cdx");
         }
 
-        private string OriginalBomFilename(string serialNumber, int version, Format format, SpecificationVersion specificationVersion)
+        private string OriginalBomFilename(string serialNumber, int version, SerializationFormat format, SpecificationVersion specificationVersion)
         {
             return _fileSystem.Path.Combine(BomDirectory(serialNumber, version), $"bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}");
         }

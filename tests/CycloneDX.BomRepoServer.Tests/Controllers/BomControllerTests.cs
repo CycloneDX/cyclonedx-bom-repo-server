@@ -27,7 +27,7 @@ using CycloneDX.BomRepoServer.Controllers;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
@@ -68,15 +68,18 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         [InlineData("text/xml", null)]
         [InlineData("application/xml", null)]
         [InlineData("application/vnd.cyclonedx+xml", null)]
+        [InlineData("application/vnd.cyclonedx+xml", "1.4")]
         [InlineData("application/vnd.cyclonedx+xml", "1.3")]
         [InlineData("application/vnd.cyclonedx+xml", "1.2")]
         [InlineData("application/vnd.cyclonedx+xml", "1.1")]
         [InlineData("application/vnd.cyclonedx+xml", "1.0")]
         [InlineData("application/json", null)]
         [InlineData("application/vnd.cyclonedx+json", null)]
+        [InlineData("application/vnd.cyclonedx+json", "1.4")]
         [InlineData("application/vnd.cyclonedx+json", "1.3")]
         [InlineData("application/vnd.cyclonedx+json", "1.2")]
         [InlineData("application/x.vnd.cyclonedx+protobuf", null)]
+        [InlineData("application/x.vnd.cyclonedx+protobuf", "1.4")]
         [InlineData("application/x.vnd.cyclonedx+protobuf", "1.3")]
         public async Task GetBom_ReturnsCorrectContentType(string mediaType, string version)
         {
@@ -121,15 +124,18 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         [InlineData("text/xml", null)]
         [InlineData("application/xml", null)]
         [InlineData("application/vnd.cyclonedx+xml", null)]
+        [InlineData("application/vnd.cyclonedx+xml", "1.4")]
         [InlineData("application/vnd.cyclonedx+xml", "1.3")]
         [InlineData("application/vnd.cyclonedx+xml", "1.2")]
         [InlineData("application/vnd.cyclonedx+xml", "1.1")]
         [InlineData("application/vnd.cyclonedx+xml", "1.0")]
         [InlineData("application/json", null)]
         [InlineData("application/vnd.cyclonedx+json", null)]
+        [InlineData("application/vnd.cyclonedx+json", "1.4")]
         [InlineData("application/vnd.cyclonedx+json", "1.3")]
         [InlineData("application/vnd.cyclonedx+json", "1.2")]
         [InlineData("application/x.vnd.cyclonedx+protobuf", null)]
+        [InlineData("application/x.vnd.cyclonedx+protobuf", "1.4")]
         [InlineData("application/x.vnd.cyclonedx+protobuf", "1.3")]
         public async Task PostBom_StoresBom(string mediaType, string version)
         {
@@ -184,7 +190,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         [InlineData("protobuf")]
         public async Task PostBom_And_RetrieveOriginalBom(string format)
         {
-            Assert.True(Format.TryParse(format, true, out Format parsedFormat));
+            Assert.True(SerializationFormat.TryParse(format, true, out SerializationFormat parsedFormat));
             using var tmpDirectory = new TempDirectory();
             await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
 
@@ -200,16 +206,16 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             byte[] originalBomBytes = null;
             string originalBomString = null;
             
-            if (parsedFormat == Format.Protobuf)
+            if (parsedFormat == SerializationFormat.Protobuf)
             {
                 originalBomBytes = Protobuf.Serializer.Serialize(bom);
             }
-            else if (parsedFormat == Format.Xml)
+            else if (parsedFormat == SerializationFormat.Xml)
             {
                 originalBomString = Xml.Serializer.Serialize(bom);
                 originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);
             }
-            else if (parsedFormat == Format.Json)
+            else if (parsedFormat == SerializationFormat.Json)
             {
                 originalBomString = Json.Serializer.Serialize(bom);
                 originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);

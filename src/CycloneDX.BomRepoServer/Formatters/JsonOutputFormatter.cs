@@ -31,37 +31,30 @@ namespace CycloneDX.BomRepoServer.Formatters
         {
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/json"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.4"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.3"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.2"));
             SupportedEncodings.Add(Encoding.UTF8);
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
+        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context, Encoding selectedEncoding)
         {
             var contentType = new ContentType(context.ContentType.ToString());
             
-            var version = SpecificationVersion.v1_3;
+            var version = SpecificationVersion.v1_4;
             if (contentType.Parameters?.ContainsKey("version") == true)
             {
                 version = Enum.Parse<SpecificationVersion>("v" + contentType.Parameters["version"].Replace('.', '_'));
             }
             
             var response = context.HttpContext.Response;
-            var bom_v1_3 = context.Object as CycloneDX.Models.v1_3.Bom;
-            string bomJson;
+            var bom = context.Object as CycloneDX.Models.Bom;
+            bom.SpecVersion = version;
 
-            if (version == SpecificationVersion.v1_2)
-            {
-                var bom_v1_2 = new CycloneDX.Models.v1_2.Bom(bom_v1_3);
-                bomJson = Json.Serializer.Serialize(bom_v1_2);
-            }
-            else
-            {
-                bomJson = Json.Serializer.Serialize(bom_v1_3);
-            }
+            string bomJson = Json.Serializer.Serialize(bom);
 
             await response.WriteAsync(bomJson);
         }

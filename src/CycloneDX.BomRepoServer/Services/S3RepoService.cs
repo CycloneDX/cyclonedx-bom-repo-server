@@ -30,7 +30,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Amazon.S3.Util;
 using CycloneDX.BomRepoServer.Exceptions;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using CycloneDX.Protobuf;
 
 namespace CycloneDX.BomRepoServer.Services
@@ -177,7 +177,7 @@ namespace CycloneDX.BomRepoServer.Services
                 var response = await _s3Client.GetObjectAsync(_bucketName, filename, cancellationToken);
                 await using (response.ResponseStream)
                 {
-                    var bom = Deserializer.Deserialize(response.ResponseStream);
+                    var bom = Serializer.Deserialize(response.ResponseStream);
                     return bom;
                 }
             }
@@ -214,7 +214,7 @@ namespace CycloneDX.BomRepoServer.Services
 
                     var formatString = baseFilename.Substring(lastBreak + 1);
                     var specificationVersion = baseFilename.Substring(firstBreak + 1, lastBreak - firstBreak - 1);
-                    Enum.TryParse(formatString, true, out Format parsedFormat);
+                    Enum.TryParse(formatString, true, out SerializationFormat parsedFormat);
                     Enum.TryParse(specificationVersion, true,
                         out SpecificationVersion parsedSpecificationVersion);
 
@@ -265,7 +265,7 @@ namespace CycloneDX.BomRepoServer.Services
             return bom;
         }
 
-        public async Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, Format format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default)
+        public async Task StoreOriginalAsync(string serialNumber, int version, Stream bomStream, SerializationFormat format, SpecificationVersion specificationVersion, CancellationToken cancellationToken = default)
         {
             var fileName = OriginalBomFilename(serialNumber, version, format, specificationVersion);
             if (await KeyExists(fileName))
@@ -332,7 +332,7 @@ namespace CycloneDX.BomRepoServer.Services
             return $"{BomDirectory(serialNumber, version)}/bom.cdx";
         }
 
-        private string OriginalBomFilename(string serialNumber, int version, Format format, SpecificationVersion specificationVersion)
+        private string OriginalBomFilename(string serialNumber, int version, SerializationFormat format, SpecificationVersion specificationVersion)
         {
             return
                 $"{BomDirectory(serialNumber, version)}/bom.{specificationVersion}.{format.ToString().ToLowerInvariant()}";

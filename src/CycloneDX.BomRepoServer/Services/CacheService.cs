@@ -20,7 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using CycloneDX.BomRepoServer.Models;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 using JetBrains.Annotations;
 using Microsoft.Extensions.Logging;
 

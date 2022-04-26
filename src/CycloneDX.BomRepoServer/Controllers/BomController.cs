@@ -62,7 +62,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
         
         [HttpGet]
-        public async Task<ActionResult<CycloneDX.Models.v1_3.Bom>> Get(string serialNumber, int? version, bool original)
+        public async Task<ActionResult<CycloneDX.Models.Bom>> Get(string serialNumber, int? version, bool original)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
             if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
@@ -133,36 +133,36 @@ namespace CycloneDX.BomRepoServer.Controllers
             }
 
             var originalBomStream = new MemoryStream();
-            CycloneDX.Models.v1_3.Bom bom;
-            Format format;
+            CycloneDX.Models.Bom bom;
+            SerializationFormat format;
             
             if (contentType.MediaType == MediaTypes.Xml
                 || contentType.MediaType == "text/xml"
                 || contentType.MediaType == "application/xml"
             )
             {
-                format = Format.Xml;
+                format = SerializationFormat.Xml;
                 await Request.Body.CopyToAsync(originalBomStream);
                 originalBomStream.Position = 0;
-                bom = Xml.Deserializer.Deserialize(originalBomStream);
+                bom = Xml.Serializer.Deserialize(originalBomStream);
             }
             else if (contentType.MediaType == MediaTypes.Json
                 || contentType.MediaType == "application/json"
             )
             {
-                format = Format.Json;
+                format = SerializationFormat.Json;
                 await Request.Body.CopyToAsync(originalBomStream);
                 originalBomStream.Position = 0;
-                bom = Json.Deserializer.Deserialize(Encoding.UTF8.GetString(originalBomStream.ToArray()));
+                bom = Json.Serializer.Deserialize(Encoding.UTF8.GetString(originalBomStream.ToArray()));
             }
             else if (contentType.MediaType == MediaTypes.Protobuf
                 || contentType.MediaType == "application/octet-stream"
             )
             {
-                format = Format.Protobuf;
+                format = SerializationFormat.Protobuf;
                 await Request.Body.CopyToAsync(originalBomStream);
                 originalBomStream.Position = 0;
-                bom = Protobuf.Deserializer.Deserialize(originalBomStream);
+                bom = Protobuf.Serializer.Deserialize(originalBomStream);
             }
             else
             {
