@@ -20,10 +20,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace CycloneDX.BomRepoServer.Options
 {
     [ExcludeFromCodeCoverage]
-    public class AllowedMethodsOptions
+    public class FileSystemRepoOptions
     {
-        public bool Get { get; set; } = false;
-        public bool Post { get; set; } = false;
-        public bool Delete { get; set; } = false;
+        public string Directory { get; set; }
     }
 }

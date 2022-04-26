@@ -16,9 +16,12 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
     
 using System;
+using System.Net.Mime;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.Net.Http.Headers;
+
 
 namespace CycloneDX.BomRepoServer.Formatters
 {
@@ -28,17 +31,27 @@ namespace CycloneDX.BomRepoServer.Formatters
         {
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/octet-stream"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.4"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/x.vnd.cyclonedx+protobuf; version=1.3"));
         }
 
-        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
+        protected override bool CanWriteType(Type type) => type == typeof(CycloneDX.Models.Bom);
 
         public override async Task WriteResponseBodyAsync(OutputFormatterWriteContext context)
         {
-            var response = context.HttpContext.Response;
-            var bom_v1_3 = context.Object as CycloneDX.Models.v1_3.Bom;
+            var contentType = new ContentType(context.ContentType.ToString());
+            
+            var version = SpecificationVersion.v1_4;
+            if (contentType.Parameters?.ContainsKey("version") == true)
+            {
+                version = Enum.Parse<SpecificationVersion>("v" + contentType.Parameters["version"].Replace('.', '_'));
+            }
 
-            var bomProtobuf = Protobuf.Serializer.Serialize(bom_v1_3);
+            var response = context.HttpContext.Response;
+            var bom = context.Object as CycloneDX.Models.Bom;
+            bom.SpecVersion = version;
+
+            var bomProtobuf = Protobuf.Serializer.Serialize(bom);
 
             await response.Body.WriteAsync(bomProtobuf);
         }
