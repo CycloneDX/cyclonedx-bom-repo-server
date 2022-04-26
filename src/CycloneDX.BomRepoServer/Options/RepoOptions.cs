@@ -14,11 +14,14 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
-    
+
+using System.Diagnostics.CodeAnalysis;
+
 namespace CycloneDX.BomRepoServer.Options
 {
+    [ExcludeFromCodeCoverage]
     public class RepoOptions
     {
-        public string Directory { get; set; }
+        public string StorageType { get; set; }
     }
 }

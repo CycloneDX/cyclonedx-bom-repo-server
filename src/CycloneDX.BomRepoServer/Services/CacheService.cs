@@ -53,24 +53,24 @@ namespace CycloneDX.BomRepoServer.Services
             }
         }
 
-        private readonly RepoService _repoService;
+        private readonly IRepoService _repoService;
         private readonly ILogger _logger;
 
         private readonly Dictionary<ValueTuple<string, int>, BomSubset> _bomCache = new ();
 
-        public CacheService(RepoService repoService, ILogger logger = null)
+        public CacheService(IRepoService repoService, ILogger logger = null)
         {
             _repoService = repoService;
             _logger = logger;
         }
 
-        public void UpdateCache()
+        public async Task UpdateCache()
         {
             var existingEntries = _bomCache.Keys.ToList();
 
-            foreach (var serialNumber in _repoService.GetAllBomSerialNumbers())
+            await foreach (var serialNumber in _repoService.GetAllBomSerialNumbersAsync())
             {
-                foreach (var bom in _repoService.RetrieveAll(serialNumber))
+                await foreach (var bom in _repoService.RetrieveAllAsync(serialNumber))
                 {
                     existingEntries.Remove((serialNumber, bom.Version.Value));
                     // add new/update existing BOMs

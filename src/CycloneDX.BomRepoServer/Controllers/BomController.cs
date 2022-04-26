@@ -46,10 +46,10 @@ namespace CycloneDX.BomRepoServer.Controllers
             @"^(urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}))$");
 
         private readonly AllowedMethodsOptions _allowedMethods;
-        private readonly RepoService _repoService;
+        private readonly IRepoService _repoService;
         private readonly ILogger<BomController> _logger;
 
-        public BomController(AllowedMethodsOptions allowedMethods, RepoService repoService, ILogger<BomController> logger = null)
+        public BomController(AllowedMethodsOptions allowedMethods, IRepoService repoService, ILogger<BomController> logger = null)
         {
             _allowedMethods = allowedMethods;
             _repoService = repoService;
@@ -62,7 +62,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
         
         [HttpGet]
-        public ActionResult<CycloneDX.Models.v1_3.Bom> Get(string serialNumber, int? version, bool original)
+        public async Task<ActionResult<CycloneDX.Models.v1_3.Bom>> Get(string serialNumber, int? version, bool original)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
             if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
@@ -76,7 +76,7 @@ namespace CycloneDX.BomRepoServer.Controllers
                 if (!version.HasValue)
                     return BadRequest("BOM version must be specified when requesting the original BOM.");
                 
-                var originalResult = _repoService.RetrieveOriginal(serialNumber, version.Value);
+                var originalResult = await _repoService.RetrieveOriginalAsync(serialNumber, version.Value);
                 if (originalResult == null) return NotFound();
                 
                 foreach (var mediaTypeHeader in headers.Accept)
@@ -109,7 +109,7 @@ namespace CycloneDX.BomRepoServer.Controllers
             }
             else
             {
-                var result = _repoService.Retrieve(serialNumber, version);
+                var result = await _repoService.RetrieveAsync(serialNumber, version);
                 return result == null ? NotFound() : result;
             }
         }
@@ -182,8 +182,8 @@ namespace CycloneDX.BomRepoServer.Controllers
             try
             {
                 originalBomStream.Position = 0;
-                var result = _repoService.Store(bom);
-                await _repoService.StoreOriginal(bom.SerialNumber, bom.Version.Value, originalBomStream, format, specificationVersion);
+                var result = await _repoService.StoreAsync(bom);
+                await _repoService.StoreOriginalAsync(bom.SerialNumber, bom.Version.Value, originalBomStream, format, specificationVersion);
                 var routeValues = new {serialNumber = result.SerialNumber, version = result.Version};
                 return CreatedAtAction(nameof(Get), routeValues, "");
             }
@@ -194,7 +194,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
         
         [HttpDelete]
-        public ActionResult Delete(string serialNumber, int? version)
+        public async Task<ActionResult> Delete(string serialNumber, int? version)
         {
             if (!_allowedMethods.Delete) return StatusCode(403);
             if (!ValidSerialNumber(serialNumber)) return BadRequest("Invalid serialNumber provided");
@@ -202,9 +202,9 @@ namespace CycloneDX.BomRepoServer.Controllers
             if (serialNumber == null) return BadRequest("serialNumber is a required parameter");
 
             if (version.HasValue)
-                _repoService.Delete(serialNumber, version.Value);
+                await _repoService.DeleteAsync(serialNumber, version.Value);
             else
-                _repoService.DeleteAll(serialNumber);
+                await _repoService.DeleteAllAsync(serialNumber);
 
             return Ok();
         }
