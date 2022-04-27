@@ -15,15 +15,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
-using System.Diagnostics.CodeAnalysis;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Hosting;
 
-namespace CycloneDX.BomRepoServer.Options
+namespace CycloneDX.BomRepoServer.Services
 {
-    [ExcludeFromCodeCoverage]
-    public class AllowedMethodsOptions
+    public class RepoMetadataHostedService : IHostedService
     {
-        public bool Get { get; set; } = false;
-        public bool Post { get; set; } = false;
-        public bool Delete { get; set; } = false;
+        private readonly IRepoService _repoService;
+
+        public RepoMetadataHostedService(IRepoService repoService)
+        {
+            _repoService = repoService;
+        }
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            await _repoService.PostConstructAsync();
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

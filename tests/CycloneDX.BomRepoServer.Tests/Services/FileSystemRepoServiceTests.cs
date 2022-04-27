@@ -16,7 +16,6 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
 using System;
-using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Linq;
 using XFS = System.IO.Abstractions.TestingHelpers.MockUnixSupport;
@@ -26,15 +25,27 @@ using CycloneDX.BomRepoServer.Exceptions;
 using Xunit;
 using CycloneDX.BomRepoServer.Options;
 using CycloneDX.BomRepoServer.Services;
-using CycloneDX.Models.v1_3;
+using CycloneDX.Models;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
-    public class RepoServiceTests
+    public class FileSystemRepoServiceTests
     {
+        private async Task<IRepoService> CreateRepoService()
+        {
+            var mfs = new MockFileSystem();
+            var options = new FileSystemRepoOptions
+            {
+                Directory = "repo"
+            };
+            var repoService = new FileSystemRepoService(mfs, options);
+            await repoService.PostConstructAsync();
+            return repoService;
+        }
+        
         [Theory]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79", true)]
-        [InlineData("urn:uuid:{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
+        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b79}", true)]
         [InlineData("urn_uuid_3e671687-395b-41f5-a30f-a58921a69b70", false)]
         [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b7", false)]
         [InlineData("abc", false)]
@@ -44,31 +55,26 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void GetAllBomSerialNumbers_ReturnsAll()
+        public async Task GetAllBomSerialNumbers_ReturnsAll()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
-            service.Store(new Bom
+            var service = await CreateRepoService();
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
-            service.Store(new Bom
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:4e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
-            service.Store(new Bom
+            await service.StoreAsync(new Bom
             {
                 SerialNumber = "urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79",
                 Version = 1,
             });
 
-            var retrievedSerialNumbers = service.GetAllBomSerialNumbers().ToList();
+            var retrievedSerialNumbers = await service.GetAllBomSerialNumbersAsync().ToListAsync();
             retrievedSerialNumbers.Sort();
             
             Assert.Collection(retrievedSerialNumbers, 
@@ -79,26 +85,21 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void RetrieveAll_ReturnsAllVersions()
+        public async Task RetrieveAll_ReturnsAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 3;
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBoms = service.RetrieveAll(bom.SerialNumber);
+            var retrievedBoms = await service.RetrieveAllAsync(bom.SerialNumber).ToListAsync();
             
             Assert.Collection(retrievedBoms, 
                 bom => Assert.Equal(1, bom.Version),
@@ -108,118 +109,93 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void RetrieveLatest_ReturnsLatestVersion()
+        public async Task RetrieveLatest_ReturnsLatestVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 3;
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber);
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber);
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
         }
         
         [Fact]
-        public void StoreBom_StoresSpecificVersion()
+        public async Task StoreBom_StoresSpecificVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 2,
             };
 
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, bom.Version.Value);
             
             Assert.Equal(retrievedBom.SerialNumber, bom.SerialNumber);
             Assert.Equal(retrievedBom.Version, bom.Version);
         }
         
         [Theory]
-        [InlineData(Format.Xml)]
-        [InlineData(Format.Json)]
-        [InlineData(Format.Protobuf)]
-        public async Task StoreOriginalBom_RetrievesOriginalContent(Format format)
+        [InlineData(SerializationFormat.Xml)]
+        [InlineData(SerializationFormat.Json)]
+        [InlineData(SerializationFormat.Protobuf)]
+        public async Task StoreOriginalBom_RetrievesOriginalContent(SerializationFormat format)
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new byte[] {32, 64, 128};
             using var originalMS = new System.IO.MemoryStream(bom);
 
-            await service.StoreOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
+            await service.StoreOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1, originalMS, format, SpecificationVersion.v1_2);
 
-            using var result = service.RetrieveOriginal("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
+            using var result = await service.RetrieveOriginalAsync("urn:uuid:5e671687-395b-41f5-a30f-a58921a69b79", 1);
             
             Assert.Equal(format, result.Format);
             Assert.Equal(SpecificationVersion.v1_2, result.SpecificationVersion);
 
-            using var resultMS = new System.IO.MemoryStream();
+            await using var resultMS = new System.IO.MemoryStream();
             await result.BomStream.CopyToAsync(resultMS);
             Assert.Equal(bom, resultMS.ToArray());
         }
         
         [Fact]
-        public void StoreClashingBomVersion_ThrowsException()
+        public async Task StoreClashingBomVersion_ThrowsException()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
 
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
-            Assert.Throws<BomAlreadyExistsException>(() => service.Store(bom));
+            await Assert.ThrowsAsync<BomAlreadyExistsException>(() => service.StoreAsync(bom));
         }
         
         [Fact]
-        public void StoreBomWithoutVersion_SetsVersion()
+        public async Task StoreBomWithoutVersion_SetsVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid()
             };
 
-            var returnedBom = service.Store(bom);
+            var returnedBom = await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, 1);
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
             
             Assert.Equal(bom.SerialNumber, returnedBom.SerialNumber);
             Assert.Equal(1, returnedBom.Version);
@@ -228,27 +204,22 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
+        public async Task StoreBomWithPreviousVersions_IncrementsFromPreviousVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 2,
             };
             // store previous version
-            service.Store(bom);
+            await service.StoreAsync(bom);
 
             // store new version without a version number
             bom.Version = null;
-            var returnedBom = service.Store(bom);
+            var returnedBom = await service.StoreAsync(bom);
 
-            var retrievedBom = service.Retrieve(returnedBom.SerialNumber, returnedBom.Version.Value);
+            var retrievedBom = await service.RetrieveAsync(returnedBom.SerialNumber, returnedBom.Version.Value);
             
             Assert.Equal(bom.SerialNumber, returnedBom.SerialNumber);
             Assert.Equal(3, returnedBom.Version);
@@ -257,53 +228,43 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void Delete_DeletesSpecificVersion()
+        public async Task Delete_DeletesSpecificVersion()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             
-            service.Delete(bom.SerialNumber, bom.Version.Value);
+            await service.DeleteAsync(bom.SerialNumber, bom.Version.Value);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, bom.Version.Value);
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, bom.Version.Value);
             Assert.Null(retrievedBom);
-            retrievedBom = service.Retrieve(bom.SerialNumber, 1);
+            retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
             Assert.Equal(bom.SerialNumber, retrievedBom.SerialNumber);
             Assert.Equal(1, retrievedBom.Version);
         }
         
         [Fact]
-        public void Delete_DeletesBomsFromAllVersions()
+        public async Task Delete_DeletesBomsFromAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             
-            service.Delete(bom.SerialNumber, 1);
+            await service.DeleteAsync(bom.SerialNumber, 1);
 
-            var bomVersions = service.GetAllVersions(bom.SerialNumber);
+            var bomVersions = await service.GetAllVersionsAsync(bom.SerialNumber).ToListAsync();
             
             Assert.Collection(bomVersions, 
                 bomVersion =>
@@ -314,28 +275,23 @@ namespace CycloneDX.BomRepoServer.Tests.Services
         }
         
         [Fact]
-        public void DeleteAll_DeletesAllVersions()
+        public async Task DeleteAll_DeletesAllVersions()
         {
-            var mfs = new MockFileSystem();
-            var options = new RepoOptions
-            {
-                Directory = "repo"
-            };
-            var service = new RepoService(mfs, options);
+            var service = await CreateRepoService();
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:" + Guid.NewGuid(),
                 Version = 1,
             };
-            service.Store(bom);
+            await service.StoreAsync(bom);
             bom.Version = 2;
-            service.Store(bom);
+            await service.StoreAsync(bom);
             
-            service.DeleteAll(bom.SerialNumber);
+            await service.DeleteAllAsync(bom.SerialNumber);
 
-            var retrievedBom = service.Retrieve(bom.SerialNumber, 1);
+            var retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 1);
             Assert.Null(retrievedBom);
-            retrievedBom = service.Retrieve(bom.SerialNumber, 2);
+            retrievedBom = await service.RetrieveAsync(bom.SerialNumber, 2);
             Assert.Null(retrievedBom);
         }
     }

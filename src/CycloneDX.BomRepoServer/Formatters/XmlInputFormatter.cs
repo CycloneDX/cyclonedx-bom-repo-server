@@ -32,6 +32,7 @@ namespace CycloneDX.BomRepoServer.Formatters
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("text/xml"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/xml"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+xml"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+xml; version=1.4"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+xml; version=1.3"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+xml; version=1.2"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+xml; version=1.1"));
@@ -40,7 +41,7 @@ namespace CycloneDX.BomRepoServer.Formatters
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
+        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.Bom);
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
         {
@@ -50,7 +51,7 @@ namespace CycloneDX.BomRepoServer.Formatters
 
             try
             {
-                var bom = Xml.Deserializer.Deserialize(xmlString);
+                var bom = Xml.Serializer.Deserialize(xmlString);
                 return await InputFormatterResult.SuccessAsync(bom);
             }
             catch (Exception)

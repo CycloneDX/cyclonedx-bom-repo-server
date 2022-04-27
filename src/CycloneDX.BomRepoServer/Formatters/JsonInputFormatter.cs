@@ -31,13 +31,14 @@ namespace CycloneDX.BomRepoServer.Formatters
         {
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/json"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json"));
+            SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.4"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.3"));
             SupportedMediaTypes.Add(MediaTypeHeaderValue.Parse("application/vnd.cyclonedx+json; version=1.2"));
             SupportedEncodings.Add(Encoding.UTF8);
             SupportedEncodings.Add(Encoding.Unicode);
         }
 
-        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.v1_3.Bom);
+        protected override bool CanReadType(Type type) => type == typeof(CycloneDX.Models.Bom);
 
         public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context, Encoding effectiveEncoding)
         {
@@ -47,7 +48,7 @@ namespace CycloneDX.BomRepoServer.Formatters
 
             try
             {
-                var bom = Json.Deserializer.Deserialize(jsonString);
+                var bom = Json.Serializer.Deserialize(jsonString);
                 return await InputFormatterResult.SuccessAsync(bom);
             }
             catch (Exception)

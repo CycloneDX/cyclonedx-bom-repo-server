@@ -19,6 +19,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace CycloneDX.BomRepoServer.Services
 {
@@ -26,10 +27,12 @@ namespace CycloneDX.BomRepoServer.Services
     {
         private Task _executingTask;
         private readonly CancellationTokenSource _stoppingCts = new CancellationTokenSource();
+        private readonly ILogger<CacheUpdateBackgroundService> _logger;
         private readonly CacheService _cacheService;
 
-        public CacheUpdateBackgroundService(CacheService cacheService)
+        public CacheUpdateBackgroundService(ILogger<CacheUpdateBackgroundService> logger, CacheService cacheService)
         {
+            _logger = logger;
             _cacheService = cacheService;
         }
  
@@ -57,8 +60,8 @@ namespace CycloneDX.BomRepoServer.Services
         {
             do
             {
-                Console.WriteLine("Updating BOM cache...");
-                _cacheService.UpdateCache();
+                _logger.LogInformation("Updating BOM cache...");
+                await _cacheService.UpdateCache();
  
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }

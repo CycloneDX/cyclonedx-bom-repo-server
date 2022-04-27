@@ -81,6 +81,37 @@ the following environment variables
 | RETENTION__MAXBOMVERSIONS | Any integer value >= 0 | The maximum number of BOM versions that will be retained. If zero, the number of BOM versions are ignored for retention. | `0` |
 | RETENTION__MAXBOMAGE | Any integer value >= 0 | The maximum age of a BOM, in days, before it is removed. If zero, the BOM age is ignored for retention. | `0` |
 
+### Storage
+
+The server storage type is configured under the `Repo` section. Currently we support the storage types `FileSystem` and `S3` with options varying depending on the type.
+
+```json
+...
+"Repo": {
+  "StorageType": "FileSystem",
+  "Options": {
+    "Directory": "Repo"
+  }
+}
+...
+```
+
+```json
+...
+"Repo": {
+    "StorageType": "S3",
+    "Options": {
+      "Endpoint": "localhost:9000",
+      "AccessKey": "bomserver-minioadmin",
+      "SecretKey": "bomserver-minioadmin",
+      "ForcePathStyle": true,
+      "UseHttp": false,
+      "BucketName": "bomserver"
+  }
+}
+...
+```
+
 ## Authentication and Authorization
 
 Authentication and authorization are expected to be configured at the web
