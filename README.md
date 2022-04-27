@@ -13,14 +13,14 @@ A BOM repository server for distributing CycloneDX BOMs.
 You can test it out locally using Docker by running:
 
 ```
-docker run --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:80 cyclonedx/cyclonedx-bom-repo-server
+docker run --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
 ```
 
 Or, if you would like to persist BOM repository storage between runs:
 
 ```
 mkdir repo
-docker run --volume "$(pwd)/repo":/repo --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:80 cyclonedx/cyclonedx-bom-repo-server
+docker run --volume "$(pwd)/repo":/repo --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
 ```
 
 ## API Endpoints
@@ -74,7 +74,7 @@ the following environment variables
 
 | Environment Variable Name | Supported Values | Description | Default Value |
 | --- | --- | --- | --- |
-| REPO__DIRECTORY | Any valid directory path | The directory BOMs are stored | `Repo` | 
+| REPO__DIRECTORY | Any valid directory path | The directory BOMs are stored | `Repo` (set to `\repo` within the official Container since *tbd*) |
 | ALLOWEDMETHODS__GET | `true` or `false` | Allows or forbids BOM retrieval | `false` |
 | ALLOWEDMETHODS__POST | `true` or `false` | Allows or forbids BOM creation | `false` |
 | ALLOWEDMETHODS__DELETE | `true` or `false` | Allows or forbids BOM deletion | `false` |

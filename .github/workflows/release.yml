@@ -8,7 +8,7 @@
 #
 # For an example commit browse to
 # https://github.com/CycloneDX/cyclonedx-dotnet/commit/d110af854371374460430bb8438225a7d7a84274.
-# 
+#
 # The resulting release is here
 # https://github.com/CycloneDX/cyclonedx-dotnet/releases/tag/v1.0.0.
 #
@@ -20,78 +20,172 @@
 name: Release
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "6.0"
 
 jobs:
-  release:
-    name: Release
+  create-release:
+    name: Create GH Release
     runs-on: ubuntu-20.04
-    timeout-minutes: 30
+    timeout-minutes: 15
+
+    outputs:
+      app_version: ${{ steps.get-version.outputs.app_version }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+
     steps:
-      - uses: actions/checkout@v2.4.0
+      - name: Checkout repository
+        uses: actions/checkout@v2.4.0
+
+      - name: Set up .Net
       - uses: actions/setup-dotnet@v2.0.0
         with:
-          dotnet-version: '6.0'
+          dotnet-version: "${{ env.DOTNET_VERSION }}"
+
       # The tests should have already been run during the PR workflow, so this is really just a sanity check
-      - name: Tests
-        run: dotnet test
+      - name: Run smoke tests
+        run: |-
+          dotnet restore
+          dotnet build --nologo --no-restore --configuration Release
+          dotnet test --nologo --no-restore --configuration Release --verbosity normal
 
-      # Create binaries
-      - name: Create binaries
-        id: create_binaries
-        run: |
+      - name: Get version
+        id: get-version
+        run: |-
           VERSION=`cat semver.txt`
-          echo "##[set-output name=version;]$VERSION"
-          REPO=cyclonedx/cyclonedx-bom-repo-server
-          dotnet build --configuration Release
-          mkdir bin
-          dotnet publish src/CycloneDX.BomRepoServer/CycloneDX.BomRepoServer.csproj --configuration Release /p:Version=$VERSION --output bin
-          docker build -f Dockerfile --build-arg VERSION=$VERSION -t $REPO:$VERSION -t $REPO:latest .
+          echo "::set-output name=app_version::${VERSION}"
+          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Create release archives
-        id: create_release_archives
-        run: |
-          cd bin
-          zip -r ../CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip ./
-          tar -zcvf ../CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz ./
-
-      - name: Publish Docker image to Docker Hub
-        env:
-          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-        run: |
-          REPO=cyclonedx/cyclonedx-bom-repo-server
-          docker login --username "$DOCKERHUB_USERNAME" --password "$DOCKERHUB_TOKEN"
-          docker push $REPO:latest
-          docker push $REPO:${{ steps.create_binaries.outputs.version }}
-
-      - name: Create github release and git tag for release
-        id: create_release
+      - name: Create GitHub release and git tag for release
+        id: create-release
         uses: actions/create-release@v1.1.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          release_name: ${{ steps.create_binaries.outputs.version }}
-          tag_name: v${{ steps.create_binaries.outputs.version }}
+          release_name: ${{ env.APP_VERSION }}
+          tag_name: v${{ env.APP_VERSION }}
           draft: false
           prerelease: false
 
-      - name: Upload zip archive to github release
+  binaries:
+    name: Build Binaries for GH Release
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    needs:
+      - create-release
+
+    env:
+      APP_VERSION: ${{ needs.create-release.outputs.app_version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - linux-x64
+          - linux-musl-x64
+          - linux-arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2.4.0
+
+      - name: Set up .Net
+        uses: actions/setup-dotnet@v1.9.0
+        with:
+          dotnet-version: "${{ env.DOTNET_VERSION }}"
+
+      - name: Run .Net publish
+        run: |-
+          dotnet publish src/CycloneDX.BomRepoServer/CycloneDX.BomRepoServer.csproj \
+            --nologo \
+            --configuration Release \
+            --output bin \
+            --no-self-contained \
+            --runtime ${{ matrix.runtime }} \
+            -p:Version=${APP_VERSION}
+
+      - name: Create release archives
+        id: create_release_archives
+        run: |-
+          ARCHIVE_NAME=CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}
+          pushd bin
+          zip -r ../${ARCHIVE_NAME}.zip ./
+          tar -zcvf ../${ARCHIVE_NAME}.tar.gz ./
+          popd
+          sha256sum ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}.tar.gz > ${ARCHIVE_NAME}.checksums
+
+      - name: Upload zip archive to GitHub release
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip
-          asset_name: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.zip
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
           asset_content_type: application/zip
 
-      - name: Upload tar.gz archive to github release
+      - name: Upload tar.gz archive to GitHub release
         uses: actions/upload-release-asset@v1.0.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz
-          asset_name: CycloneDX.BomRepoServer.${{ steps.create_binaries.outputs.version }}.tar.gz
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
           asset_content_type: application/gzip
+
+      - name: Upload checksums to GitHub release
+        uses: actions/upload-release-asset@v1.0.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
+          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
+          asset_content_type: text/plain
+
+  containers:
+    name: Build Container Images
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs:
+      - create-release
+
+    env:
+      APP_VERSION: ${{ needs.create-release.outputs.app_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2.4.0
+
+      - name: Install qemu dependency
+        run: |-
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Build multi-arch container image
+        id: container
+        uses: redhat-actions/buildah-build@v2.9
+        with:
+          image: cyclonedx-bom-repo-server
+          tags: >-
+            latest
+            ${{ env.APP_VERSION }}
+          build-args: |-
+            APP_VERSION=${{ env.APP_VERSION }}
+            COMMIT_SHA=${{ github.sha }}
+          oci: true
+          platforms: linux/amd64, linux/arm64
+          containerfiles: |-
+            ./Dockerfile
+
+      - name: Push container image to docker.io
+        uses: redhat-actions/push-to-registry@v2.5
+        with:
+          image: ${{ steps.container.outputs.image }}
+          tags: ${{ steps.container.outputs.tags }}
+          registry: docker.io/cyclonedx
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
