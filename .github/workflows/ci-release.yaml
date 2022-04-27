@@ -17,7 +17,7 @@
 # and selecting "Run workflow". If releasing a patch for a previous version
 # make sure the correct branch is selected. It will default to the default
 # branch.
-name: Release
+name: Release CI
 
 on:
   workflow_dispatch:
@@ -37,10 +37,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.2
 
       - name: Set up .Net
-      - uses: actions/setup-dotnet@v2.0.0
+        uses: actions/setup-dotnet@v2.0.0
         with:
           dotnet-version: "${{ env.DOTNET_VERSION }}"
 
@@ -58,16 +58,13 @@ jobs:
           echo "::set-output name=app_version::${VERSION}"
           echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Create GitHub release and git tag for release
-        id: create-release
-        uses: actions/create-release@v1.1.4
+      - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          release_name: ${{ env.APP_VERSION }}
-          tag_name: v${{ env.APP_VERSION }}
-          draft: false
-          prerelease: false
+        run: |-
+          gh release create "${{ env.APP_VERSION }}" \
+            --title "${{ env.APP_VERSION }}" \
+            --generate-notes
 
   binaries:
     name: Build Binaries for GH Release
@@ -89,10 +86,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.2
 
       - name: Set up .Net
-        uses: actions/setup-dotnet@v1.9.0
+        uses: actions/setup-dotnet@v2.0.0
         with:
           dotnet-version: "${{ env.DOTNET_VERSION }}"
 
@@ -107,7 +104,6 @@ jobs:
             -p:Version=${APP_VERSION}
 
       - name: Create release archives
-        id: create_release_archives
         run: |-
           ARCHIVE_NAME=CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}
           pushd bin
@@ -116,35 +112,12 @@ jobs:
           popd
           sha256sum ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}.tar.gz > ${ARCHIVE_NAME}.checksums
 
-      - name: Upload zip archive to GitHub release
-        uses: actions/upload-release-asset@v1.0.2
+      - name: Upload GitHub Release Artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
-          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.zip
-          asset_content_type: application/zip
-
-      - name: Upload tar.gz archive to GitHub release
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
-          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.tar.gz
-          asset_content_type: application/gzip
-
-      - name: Upload checksums to GitHub release
-        uses: actions/upload-release-asset@v1.0.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
-          asset_name: CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.checksums
-          asset_content_type: text/plain
+        run: |-
+          gh release upload "${{ env.APP_VERSION }}" \
+            CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.*
 
   containers:
     name: Build Container Images
@@ -158,7 +131,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2.4.0
+        uses: actions/checkout@v3.0.2
 
       - name: Install qemu dependency
         run: |-

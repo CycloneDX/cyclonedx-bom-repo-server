@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/CycloneDX/cyclonedx-bom-repo-server/workflows/.NET%20Core%20CI/badge.svg)](https://github.com/CycloneDX/cyclonedx-bom-repo-server/actions?workflow=.NET+Core+CI)
+[![Test CI](https://github.com/CycloneDX/cyclonedx-bom-repo-server/actions/workflows/ci-test.yaml/badge.svg)](https://github.com/CycloneDX/cyclonedx-bom-repo-server/actions/workflows/ci-test.yaml)
 [![Docker Image](https://img.shields.io/badge/docker-image-brightgreen?style=flat&logo=docker)](https://hub.docker.com/r/cyclonedx/cyclonedx-bom-repo-server)
 [![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen.svg)](LICENSE)
 [![Website](https://img.shields.io/badge/https://-cyclonedx.org-blue.svg)](https://cyclonedx.org/)
