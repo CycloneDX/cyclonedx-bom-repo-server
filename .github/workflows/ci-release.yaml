@@ -1,0 +1,164 @@
+# This workflow is used for publishing the binaries and Docker image.
+#
+# Before triggering a release the `semver.txt` file should be updated in the
+# relevant branch.
+#
+# When commiting the version change in `semver.txt` the commit message is
+# important as it will be used for the release in GitHub.
+#
+# For an example commit browse to
+# https://github.com/CycloneDX/cyclonedx-dotnet/commit/d110af854371374460430bb8438225a7d7a84274.
+#
+# The resulting release is here
+# https://github.com/CycloneDX/cyclonedx-dotnet/releases/tag/v1.0.0.
+#
+# Releases are triggered manually. This can be done by browsing to
+# https://github.com/CycloneDX/cyclonedx-bom-repo-server/actions?query=workflow%3ARelease
+# and selecting "Run workflow". If releasing a patch for a previous version
+# make sure the correct branch is selected. It will default to the default
+# branch.
+name: Release CI
+
+on:
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "6.0"
+
+jobs:
+  create-release:
+    name: Create GH Release
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+
+    outputs:
+      app_version: ${{ steps.get-version.outputs.app_version }}
+      upload_url: ${{ steps.create-release.outputs.upload_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.0.2
+
+      - name: Set up .Net
+        uses: actions/setup-dotnet@v2.0.0
+        with:
+          dotnet-version: "${{ env.DOTNET_VERSION }}"
+
+      # The tests should have already been run during the PR workflow, so this is really just a sanity check
+      - name: Run smoke tests
+        run: |-
+          dotnet restore
+          dotnet build --nologo --no-restore --configuration Release
+          dotnet test --nologo --no-restore --configuration Release --verbosity normal
+
+      - name: Get version
+        id: get-version
+        run: |-
+          VERSION=`cat semver.txt`
+          echo "::set-output name=app_version::${VERSION}"
+          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          gh release create "${{ env.APP_VERSION }}" \
+            --title "${{ env.APP_VERSION }}" \
+            --generate-notes
+
+  binaries:
+    name: Build Binaries for GH Release
+    runs-on: ubuntu-20.04
+    timeout-minutes: 15
+    needs:
+      - create-release
+
+    env:
+      APP_VERSION: ${{ needs.create-release.outputs.app_version }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime:
+          - linux-x64
+          - linux-musl-x64
+          - linux-arm64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.0.2
+
+      - name: Set up .Net
+        uses: actions/setup-dotnet@v2.0.0
+        with:
+          dotnet-version: "${{ env.DOTNET_VERSION }}"
+
+      - name: Run .Net publish
+        run: |-
+          dotnet publish src/CycloneDX.BomRepoServer/CycloneDX.BomRepoServer.csproj \
+            --nologo \
+            --configuration Release \
+            --output bin \
+            --no-self-contained \
+            --runtime ${{ matrix.runtime }} \
+            -p:Version=${APP_VERSION}
+
+      - name: Create release archives
+        run: |-
+          ARCHIVE_NAME=CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}
+          pushd bin
+          zip -r ../${ARCHIVE_NAME}.zip ./
+          tar -zcvf ../${ARCHIVE_NAME}.tar.gz ./
+          popd
+          sha256sum ${ARCHIVE_NAME}.zip ${ARCHIVE_NAME}.tar.gz > ${ARCHIVE_NAME}.checksums
+
+      - name: Upload GitHub Release Artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |-
+          gh release upload "${{ env.APP_VERSION }}" \
+            CycloneDX.BomRepoServer.${{ env.APP_VERSION }}-${{ matrix.runtime }}.*
+
+  containers:
+    name: Build Container Images
+    runs-on: ubuntu-20.04
+    timeout-minutes: 30
+    needs:
+      - create-release
+
+    env:
+      APP_VERSION: ${{ needs.create-release.outputs.app_version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3.0.2
+
+      - name: Install qemu dependency
+        run: |-
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+
+      - name: Build multi-arch container image
+        id: container
+        uses: redhat-actions/buildah-build@v2.9
+        with:
+          image: cyclonedx-bom-repo-server
+          tags: >-
+            latest
+            ${{ env.APP_VERSION }}
+          build-args: |-
+            APP_VERSION=${{ env.APP_VERSION }}
+            COMMIT_SHA=${{ github.sha }}
+          oci: true
+          platforms: linux/amd64, linux/arm64
+          containerfiles: |-
+            ./Dockerfile
+
+      - name: Push container image to docker.io
+        uses: redhat-actions/push-to-registry@v2.5
+        with:
+          image: ${{ steps.container.outputs.image }}
+          tags: ${{ steps.container.outputs.tags }}
+          registry: docker.io/cyclonedx
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
