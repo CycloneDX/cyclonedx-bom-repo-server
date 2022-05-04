@@ -36,7 +36,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace CycloneDX.BomRepoServer.Tests.Controllers
 {
-    public class BomControllerTests
+    public class BomExchangeControllerTests
     {
         private HttpClient client;
         private FileSystemRepoService service;
@@ -64,7 +64,105 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             service = factory.Services.GetRequiredService<FileSystemRepoService>();
             client = factory.CreateClient();
         }
+
+        [Theory]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79")]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/0")]
+        public async Task GetBomWithInvalidBomIdentifierReturnsBadRequest(string bomIdentifier)
+        {
+            using var tmpDirectory = new TempDirectory();
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1
+            };
+            await service.StoreAsync(bom);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bomIdentifier}");
+
+            var result = await client.SendAsync(request);
+            
+            Assert.Equal(HttpStatusCode.BadRequest, result.StatusCode);
+        }
         
+        [Theory]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/2")]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b80/1")]
+        public async Task GetBomWithNonExistentBomIdentifierReturnsNotFound(string bomIdentifier)
+        {
+            using var tmpDirectory = new TempDirectory();
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1
+            };
+            await service.StoreAsync(bom);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bomIdentifier}");
+
+            var result = await client.SendAsync(request);
+            
+            Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
+        }
+        
+        [Fact]
+        public async Task GetBomBySerialNumberReturnsLatestVersion()
+        {
+            using var tmpDirectory = new TempDirectory();
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1
+            };
+            await service.StoreAsync(bom);
+            bom.Version = 2;
+            await service.StoreAsync(bom);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bom.SerialNumber}");
+
+            var response = await client.SendAsync(request);
+
+            Assert.True(response.IsSuccessStatusCode);
+
+            var bomContents = await response.Content.ReadAsStringAsync();
+            var retrievedBom = CycloneDX.Json.Serializer.Deserialize(bomContents);
+            
+            Assert.Equal(bom.SerialNumber, retrievedBom.SerialNumber);
+            Assert.Equal(bom.Version, retrievedBom.Version);
+        }
+        
+        [Fact]
+        public async Task GetBomByCdxUrnReturnsBom()
+        {
+            using var tmpDirectory = new TempDirectory();
+            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            
+            var bom = new Bom
+            {
+                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+                Version = 1
+            };
+            await service.StoreAsync(bom);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier=urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1");
+
+            var response = await client.SendAsync(request);
+
+            Assert.True(response.IsSuccessStatusCode);
+
+            var bomContents = await response.Content.ReadAsStringAsync();
+            var retrievedBom = CycloneDX.Json.Serializer.Deserialize(bomContents);
+            
+            Assert.Equal(bom.SerialNumber, retrievedBom.SerialNumber);
+            Assert.Equal(bom.Version, retrievedBom.Version);
+        }
+
         [Theory]
         [InlineData("text/xml", null)]
         [InlineData("application/xml", null)]
@@ -94,7 +192,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bom?serialNumber={bom.SerialNumber}&version={bom.Version}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bom.SerialNumber}");
             if (version != null)
                 request.Headers.Accept.ParseAdd($"{mediaType}; version={version}");
             else
@@ -153,7 +251,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 contentType += $"; version={version}";
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
+            var request = new HttpRequestMessage(HttpMethod.Post, "/bomexchange");
             
             if (mediaType == MediaTypes.Protobuf || mediaType == "application/octet-stream")
             {
@@ -186,76 +284,22 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         }
 
         [Theory]
-        [InlineData("xml")]
-        [InlineData("json")]
-        [InlineData("protobuf")]
-        public async Task PostBom_And_RetrieveOriginalBom(string format)
+        [InlineData(" urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1")]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1 ")]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/0")]
+        [InlineData("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b7")]
+        public void ValidCdxUrn_RecognisesInvalidValues(string serialNumber)
         {
-            Assert.True(SerializationFormat.TryParse(format, true, out SerializationFormat parsedFormat));
-            using var tmpDirectory = new TempDirectory();
-            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
-
-            var bom = new Bom
-            {
-                SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
-            };
-
-            var contentType = MediaTypes.GetMediaType(parsedFormat);
-            var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
-
-            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
-            byte[] originalBomBytes = null;
-            string originalBomString = null;
-            
-            if (parsedFormat == SerializationFormat.Protobuf)
-            {
-                originalBomBytes = Protobuf.Serializer.Serialize(bom);
-            }
-            else if (parsedFormat == SerializationFormat.Xml)
-            {
-                originalBomString = Xml.Serializer.Serialize(bom);
-                originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);
-            }
-            else if (parsedFormat == SerializationFormat.Json)
-            {
-                originalBomString = Json.Serializer.Serialize(bom);
-                originalBomBytes = Encoding.UTF8.GetBytes(originalBomString);
-            }
-
-            request.Content = new ByteArrayContent(originalBomBytes);
-            request.Content.Headers.ContentType = contentTypeHeader;
-
-            var result = await client.SendAsync(request);
-
-            Assert.Equal(HttpStatusCode.Created, result.StatusCode);
-
-            client.DefaultRequestHeaders.Add("Accept", contentType);
-            var response = await client.GetAsync(result.Headers.Location + "&original=true");
-            
-            Assert.Equal(contentType, response.Content.Headers.ContentType?.MediaType);
-
-            var retrievedOriginalBom = await response.Content.ReadAsByteArrayAsync();
-
-            if (originalBomString != null)
-            {
-                // For XML and JSON this will provide more useful output than the following assert
-                var retrievedOriginalBomString = Encoding.UTF8.GetString(retrievedOriginalBom);
-                Assert.Equal(originalBomString, retrievedOriginalBomString);
-            }
-
-            Assert.Equal(originalBomBytes, retrievedOriginalBom);
+            Assert.False(BomExchangeController.ValidCdxUrn(serialNumber));
         }
 
-        [Theory]
-        [InlineData(" urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79")]
-        [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79 ")]
-        [InlineData("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b7")]
-        [InlineData(" {3e671687-395b-41f5-a30f-a58921a69b79}")]
-        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b79} ")]
-        [InlineData("{3e671687-395b-41f5-a30f-a58921a69b7}")]
-        public void ValidSerialNumber_RecognisesInvalidValues(string serialNumber)
+        [Fact]
+        public void ParseCdxUrnTest()
         {
-            Assert.False(BomController.ValidSerialNumber(serialNumber));
+            var result = BomExchangeController.ParseCdxUrn("urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1");
+
+            Assert.Equal("3e671687-395b-41f5-a30f-a58921a69b79", result.Item1);
+            Assert.Equal(1, result.Item2);
         }
     }
 }
