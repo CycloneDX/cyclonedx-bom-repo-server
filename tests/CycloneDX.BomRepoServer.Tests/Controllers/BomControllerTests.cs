@@ -38,10 +38,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
 {
     public class BomControllerTests
     {
-        private HttpClient client;
-        private FileSystemRepoService service;
-
-        private async Task ConfigureTestServer(string repoDirectory, AllowedMethodsOptions allowedMethods)
+        private async Task<WebApplicationFactory<Startup>> GetTestServerFactory(string repoDirectory, AllowedMethodsOptions allowedMethods)
         {
             var factory = new WebApplicationFactory<Startup>().WithWebHostBuilder(builder =>
             {
@@ -61,8 +58,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                     });
             });
             await factory.Services.GetRequiredService<RepoMetadataHostedService>().StartAsync(CancellationToken.None);
-            service = factory.Services.GetRequiredService<FileSystemRepoService>();
-            client = factory.CreateClient();
+            return factory;
         }
         
         [Theory]
@@ -85,7 +81,9 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         public async Task GetBom_ReturnsCorrectContentType(string mediaType, string version)
         {
             using var tmpDirectory = new TempDirectory();
-            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var factory = await GetTestServerFactory(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var service = factory.Services.GetRequiredService<FileSystemRepoService>();
+            var client = factory.CreateClient();
             
             var bom = new Bom
             {
@@ -141,7 +139,10 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         public async Task PostBom_StoresBom(string mediaType, string version)
         {
             using var tmpDirectory = new TempDirectory();
-            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var factory = await GetTestServerFactory(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var service = factory.Services.GetRequiredService<FileSystemRepoService>();
+            var client = factory.CreateClient();
+
             var bom = new Bom
             {
                 SerialNumber = "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
@@ -193,7 +194,9 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
         {
             Assert.True(SerializationFormat.TryParse(format, true, out SerializationFormat parsedFormat));
             using var tmpDirectory = new TempDirectory();
-            await ConfigureTestServer(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var factory = await GetTestServerFactory(tmpDirectory.DirectoryPath, new AllowedMethodsOptions { Get = true });
+            var service = factory.Services.GetRequiredService<FileSystemRepoService>();
+            var client = factory.CreateClient();
 
             var bom = new Bom
             {
