@@ -8,7 +8,7 @@
     <PackageReference Include="AWSSDK.S3" Version="3.7.8.23" />
     <PackageReference Include="CycloneDX.Core" Version="5.2.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.1" />
-    <PackageReference Include="System.IO.Abstractions" Version="17.0.1" />
+    <PackageReference Include="System.IO.Abstractions" Version="17.0.13" />
     <PackageReference Include="System.Linq.Async" Version="6.0.1" />
     <PackageReference Include="System.Reactive" Version="5.0.0" />
   </ItemGroup>
