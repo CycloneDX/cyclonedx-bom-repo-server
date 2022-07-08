@@ -16,7 +16,9 @@
 // Copyright (c) OWASP Foundation. All Rights Reserved.
 
 using System;
+using System.IO;
 using System.IO.Abstractions;
+using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -66,11 +68,25 @@ namespace CycloneDX.BomRepoServer
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo {Title = "CycloneDX BOM Repository Server", Version = "v1"});
+                c.SwaggerDoc("v1", new OpenApiInfo {
+                    Title = "CycloneDX BOM Repository Server",
+                    Version = "v1",
+                    Contact = new OpenApiContact
+                    {
+                        Name = "CycloneDX Community",
+                        Url = new Uri("https://github.com/CycloneDX/cyclonedx-bom-repo-server")
+                    },
+                });
+                // enable xml documentation
+                var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+                c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
             });
 
             services.AddSingleton<IFileSystem, FileSystem>();
             services.AddSingleton<FileSystemRepoService>();
+
+            // overwrite to force use lowercase
+            services.AddRouting(options => options.LowercaseUrls = true);
             
             services.AddSingleton<IAmazonS3, AmazonS3Client>(provider =>
             {
@@ -142,7 +158,10 @@ namespace CycloneDX.BomRepoServer
             }
 
             app.UseSwagger();
-            app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "CycloneDX BOM Repository Server v1"));
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "CycloneDX BOM Repository Server v1");
+            });
 
             app.UseHttpsRedirection();
 

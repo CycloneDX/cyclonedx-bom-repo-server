@@ -39,7 +39,7 @@ using Microsoft.Net.Http.Headers;
 namespace CycloneDX.BomRepoServer.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("v1/[controller]")]
     public class BomExchangeController : ControllerBase
     {
         //TODO - these regexes and parsing methods need to be implemented in the CDX .NET library
@@ -77,7 +77,13 @@ namespace CycloneDX.BomRepoServer.Controllers
             return result;
         }
         
-        [HttpGet]
+        /// <summary>Get BOM by sepcify valid bomIdentifier</summary>
+        /// <param name="bomIdentifier"></param>
+        /// <returns>Matching BOM content</returns>
+        /// <response code="200">Returns matching BOM</response>
+        /// <response code="400">Invalid bomIdentifier</response>
+        /// <response code="403">If no matching BOM found</response>
+        [HttpGet("{bomIdentifier}")]
         public async Task<ActionResult<CycloneDX.Models.Bom>> Get(string bomIdentifier)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
@@ -99,6 +105,9 @@ namespace CycloneDX.BomRepoServer.Controllers
             }
         }
         
+        /// <summary>
+        /// Add new BOM by request body and correct header
+        /// </summary>
         [HttpPost]
         public async Task<ActionResult> Post()
         {
