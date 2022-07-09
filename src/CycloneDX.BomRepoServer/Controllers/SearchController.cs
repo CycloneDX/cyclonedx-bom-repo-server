@@ -46,9 +46,9 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
 
         /// <summary>Get BOM by sepcify below option(s): group, name, version</summary>
-        /// <param name="group"></param>
-        /// <param name="name"></param>
-        /// <param name="version"></param>
+        /// <param name="group">Optional: metadata.component.group</param>
+        /// <param name="name">Optional: metadata.component.name</param>
+        /// <param name="version">Optional: metadata.component.version</param>
         /// <returns>Matching BOM content</returns>
         /// <response code="200">Returns matching BOM</response>
         /// <response code="403">Need at least one parameter</response>

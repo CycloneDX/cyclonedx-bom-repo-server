@@ -77,8 +77,8 @@ namespace CycloneDX.BomRepoServer.Controllers
             return result;
         }
         
-        /// <summary>Get BOM by sepcify valid bomIdentifier</summary>
-        /// <param name="bomIdentifier"></param>
+        /// <summary>Get BOM by sepcify valid serial number(urn:uuid) or CDX URN(urn:cdx)</summary>
+        /// <param name="bomIdentifier">Required: serial number(urn:uuid) or CDX URN(urn:cdx)</param>
         /// <returns>Matching BOM content</returns>
         /// <response code="200">Returns matching BOM</response>
         /// <response code="400">Invalid bomIdentifier</response>
@@ -108,6 +108,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         /// <summary>
         /// Add new BOM by request body and correct header
         /// </summary>
+        /// TODO: add more document
         [HttpPost]
         public async Task<ActionResult> Post()
         {

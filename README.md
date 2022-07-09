@@ -64,19 +64,20 @@ it with the same serial number and version. But this is not recommended.
 Retrieving a BOM from the repository
 
 ```
-curl -X GET "https://www.example.com/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79" -H  "accept: application/vnd.cyclonedx+json; version=1.3"
+curl -X GET 'http://localhost:8000/v1/bom/serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79' -H 'accept: application/vnd.cyclonedx+json; version=1.4'
 ```
 
 Adding a new BOM to the repository
 
 ```
-curl -X POST "https://www.example.com/bom" -H  "accept: */*" -H  "Content-Type: application/vnd.cyclonedx+json; version=1.3" -d "{\"bomFormat\":\"CycloneDX\",\"specVersion\":\"1.3\",\"serialNumber\":\"urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79\",\"version\":1,\"components\":[{\"type\":\"library\",\"name\":\"acme-library\",\"version\":\"1.0.0\"}]}"```
+curl -X POST "http://localhost:8000/v1/bom" -H  "accept: */*" -H  "Content-Type: application/vnd.cyclonedx+json; version=1.4" -d "{\"bomFormat\":\"CycloneDX\",\"specVersion\":\"1.3\",\"serialNumber\":\"urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79\",\"version\":1,\"components\":[{\"type\":\"library\",\"name\":\"acme-library\",\"version\":\"1.0.0\"}]}"
+
 ```
 
 Deleting a BOM from the repository
 
 ```
-curl -X DELETE "https://www.example.com/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79" -H  "accept: */*"
+curl -X DELETE 'http://localhost:8000/v1/bom/serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79?version=1' -H 'accept: */*'
 ```
 
 ## Configuration

@@ -42,7 +42,6 @@ namespace CycloneDX.BomRepoServer.Controllers
     [Route("v1/[controller]")]
     public class BomController : ControllerBase
     {
-       // [SwaggerOperation(Tags = new[] { "bombom" })]
         private static readonly Regex SerialNumberRegex = new Regex(
             @"^(urn:uuid:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})|(\{[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}))$");
 
@@ -62,14 +61,14 @@ namespace CycloneDX.BomRepoServer.Controllers
             return SerialNumberRegex.IsMatch(serialNumber);
         }
         
-        /// <summary>Get BOM by sepcify sericalNumber and other options</summary>
-        /// <param name="serialNumber">serialNumber as valid UUID URN or CDX URN</param>
-        /// <param name="version">version of BOM</param>
-        /// <param name="original">if return unmodified BOM or not</param>
+        /// <summary>Get BOM by sepcify serial number(urn:uuid)</summary>
+        /// <param name="serialNumber">Required: serialNumber as valid serialNumber(urn:uuid) or CDX URN(urn:cdx)</param>
+        /// <param name="version">Optional: version of BOM. Required if original set to 'true'</param>
+        /// <param name="original">Optional: if return unmodified BOM or not</param>
         /// <returns>Matching BOM content</returns>
         /// <response code="200">Returns matching BOM</response>
         /// <response code="403">If no matching BOM found</response>
-        [HttpGet("{serialNumber}")]
+        [HttpGet]
         public async Task<ActionResult<CycloneDX.Models.Bom>> Get(string serialNumber, int? version, bool original)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
@@ -125,8 +124,17 @@ namespace CycloneDX.BomRepoServer.Controllers
         /// <summary>
         /// Add new BOM by request body and correct header
         /// </summary>
+        /// <remarks>
+        /// Sample request:
+        ///     POST /v1/bom
+        ///     {
+        ///        "bomFormat": "CycloneDX",
+        ///        "version": 1,
+        ///        "specVersion": "1.4"
+        ///     }
+        /// </remarks>
         /// <response code="200">Returns matching BOM</response>
-        /// <response code="406">Incorrect content</response>
+        /// <response code="406">Incorrect media types</response>
         /// <response code="500">Empty content</response>
         [HttpPost]
         public async Task<ActionResult> Post()
@@ -210,12 +218,12 @@ namespace CycloneDX.BomRepoServer.Controllers
         /// <summary>
         /// Delete BOM by sepcify sericalNumber and filter version if apply
         /// </summary>
-        /// <param name="serialNumber">serialNumber as valid UUID URN or CDX URN</param>
-        /// <param name="version">version of BOM</param>
+        /// <param name="serialNumber">Required: serialNumber(urn:uuid) or CDX URN(urn:cdx)</param>
+        /// <param name="version">Optional: version of BOM</param>
         /// <returns></returns>
         /// <response code="200">Success deleted matching BOM</response>
         /// <response code="403">Invalid serialNumber</response>
-        [HttpDelete("{serialNumber}")]
+        [HttpDelete]
         public async Task<ActionResult> Delete(string serialNumber, int? version)
         {
             if (!_allowedMethods.Delete) return StatusCode(403);
