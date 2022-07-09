@@ -83,7 +83,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         /// <response code="200">Returns matching BOM</response>
         /// <response code="400">Invalid bomIdentifier</response>
         /// <response code="403">If no matching BOM found</response>
-        [HttpGet("{bomIdentifier}")]
+        [HttpGet]
         public async Task<ActionResult<CycloneDX.Models.Bom>> Get(string bomIdentifier)
         {
             if (!_allowedMethods.Get) return StatusCode(403);
