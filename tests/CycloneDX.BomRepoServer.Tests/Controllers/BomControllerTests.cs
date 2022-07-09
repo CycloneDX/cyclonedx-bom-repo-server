@@ -94,7 +94,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bom?serialNumber={bom.SerialNumber}&version={bom.Version}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bom?serialNumber={bom.SerialNumber}&version={bom.Version}");
             if (version != null)
                 request.Headers.Accept.ParseAdd($"{mediaType}; version={version}");
             else
@@ -153,7 +153,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 contentType += $"; version={version}";
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
+            var request = new HttpRequestMessage(HttpMethod.Post, "/v1/bom");
             
             if (mediaType == MediaTypes.Protobuf || mediaType == "application/octet-stream")
             {
@@ -203,7 +203,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             var contentType = MediaTypes.GetMediaType(parsedFormat);
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "/bom");
+            var request = new HttpRequestMessage(HttpMethod.Post, "/v1/bom");
             byte[] originalBomBytes = null;
             string originalBomString = null;
             

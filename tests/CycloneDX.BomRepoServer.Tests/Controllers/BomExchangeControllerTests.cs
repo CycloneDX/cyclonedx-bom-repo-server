@@ -80,7 +80,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bomIdentifier}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bomexchange?bomIdentifier={bomIdentifier}");
 
             var result = await client.SendAsync(request);
             
@@ -102,7 +102,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bomIdentifier}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bomexchange?bomIdentifier={bomIdentifier}");
 
             var result = await client.SendAsync(request);
             
@@ -124,7 +124,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             bom.Version = 2;
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bom.SerialNumber}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bomexchange?bomIdentifier={bom.SerialNumber}");
 
             var response = await client.SendAsync(request);
 
@@ -150,7 +150,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier=urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bomexchange?bomIdentifier=urn:cdx:3e671687-395b-41f5-a30f-a58921a69b79/1");
 
             var response = await client.SendAsync(request);
 
@@ -192,7 +192,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
             };
             await service.StoreAsync(bom);
 
-            var request = new HttpRequestMessage(HttpMethod.Get, $"/bomexchange?bomIdentifier={bom.SerialNumber}");
+            var request = new HttpRequestMessage(HttpMethod.Get, $"/v1/bomexchange?bomIdentifier={bom.SerialNumber}");
             if (version != null)
                 request.Headers.Accept.ParseAdd($"{mediaType}; version={version}");
             else
@@ -251,7 +251,7 @@ namespace CycloneDX.BomRepoServer.Tests.Controllers
                 contentType += $"; version={version}";
             var contentTypeHeader = MediaTypeHeaderValue.Parse(contentType);
 
-            var request = new HttpRequestMessage(HttpMethod.Post, "/bomexchange");
+            var request = new HttpRequestMessage(HttpMethod.Post, "/v1/bomexchange");
             
             if (mediaType == MediaTypes.Protobuf || mediaType == "application/octet-stream")
             {
