@@ -5,7 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.S3" Version="3.7.8.23" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.9.41" />
     <PackageReference Include="CycloneDX.Core" Version="5.2.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.1" />
     <PackageReference Include="System.IO.Abstractions" Version="17.0.1" />
