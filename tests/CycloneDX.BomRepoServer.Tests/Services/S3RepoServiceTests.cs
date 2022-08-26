@@ -29,9 +29,8 @@ using CycloneDX.Models;
 using Amazon.S3;
 using Amazon.S3.Model;
 using CycloneDX.Xml;
-using DotNet.Testcontainers.Containers.Builders;
-using DotNet.Testcontainers.Containers.Modules;
-using DotNet.Testcontainers.Containers.WaitStrategies;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
 
 namespace CycloneDX.BomRepoServer.Tests.Services
 {
