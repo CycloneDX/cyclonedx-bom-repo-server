@@ -5,5 +5,6 @@ bin/
 obj/
 *.user
 repo/
+bomstorage/
 src/CycloneDX.BomRepoServer/appsettings.local.json
 BuildReports/

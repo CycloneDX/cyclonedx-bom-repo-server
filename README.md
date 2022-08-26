@@ -13,14 +13,24 @@ A BOM repository server for distributing CycloneDX BOMs.
 You can test it out locally using Docker by running:
 
 ```
-docker run --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
+docker run --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
 ```
 
-Or, if you would like to persist BOM repository storage between runs:
+Or, if you would like to persist BOM repository storage between runs by using local folder "bomstorage":
 
 ```
-mkdir repo
-docker run --volume "$(pwd)/repo":/repo --env REPO__DIRECTORY=/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
+mkdir bomstorage
+docker run --volume "$(pwd)/bomstorage":/repo --env ALLOWEDMETHODS__GET="true" --env ALLOWEDMETHODS__POST="true" --env ALLOWEDMETHODS__DELETE="true" --tty --interactive -p 8000:8080 cyclonedx/cyclonedx-bom-repo-server
+```
+
+then hit "http://localhost:8000/swagger" from browser
+
+To build your own docker image
+
+```
+git clone github.com:CycloneDX/cyclonedx-bom-repo-server.git
+cd cyclonedx-bom-repo-server
+./build-and-run.sh
 ```
 
 ## API Endpoints
@@ -28,16 +38,18 @@ docker run --volume "$(pwd)/repo":/repo --env REPO__DIRECTORY=/repo --env ALLOWE
 The server supports Swagger/Open API Specification.
 
 The JSON endpoint is `/swagger/v1/swagger.json`. The UI can be accessed at
-`/swagger/index.html`.
+`/swagger`.
 
 A summary of the available endpoints and methods are below:
 
 | Path | HTTP Method | Required Parameters | Optional Parameters | Description |
 | --- | --- | --- | --- | --- |
-| /bom | GET | `serialNumber` | `version`, `original` | If only the `serialNumber` parameter is supplied, retrieve the latest version of the BOM from the repository. If providing `serialNumber` and `version`, a specific version of the BOM will be retrieved. Supports HTTP content negotiation for all CycloneDX BOM formats and versions. If `original` is true, returns the original, unmodified, BOM. |
+| /bom | GET | `serialNumber` | `version`, `original` | If only the `serialNumber` parameter is supplied, retrieve the latest version of the BOM from the repository. If providing `serialNumber` and `version`, a specific version of the BOM will be retrieved. Supports HTTP content negotiation for all CycloneDX BOM formats and versions. If `original` is true, returns the original, unmodified BOM. |
 | /bom | POST | BOM content in request body and appropriate `Content-Type` header | | Adds a new BOM to the repository. Supports all CycloneDX BOM formats and versions. If the submitted BOM does not have a serial number, one will be generated. If the BOM does not have a version the next version number will be added. The response will contain an appropriate `Location` header to reference the BOM in the repository. |
 | /bom | DELETE | `serialNumber` | `version` | If only the `serialNumber` parameter is supplied, all versions of the BOM will be deleted from the repository. If `serialNumber` and `version` are supplied, only the specific version will be deleted from the repository. |
-| /search | GET | One of `group`, `name`, `version` | `group`, `name`, `version` | Retrieve a list of BOM serial numbers and versions that match the supplied metadata component search criteria. |
+| /bomexchange | GET  | `bomIdentifier` | | Input valid serial number UUID URN or CDX URN to retrieve BOM. |
+| /bomexchange | POST | BOM content in request body and appropriate `Content-Type` header | | Adds a new BOM to the repository. Supports all CycloneDX BOM formats and versions. If the submitted BOM does not have a serial number, one will be generated. If the BOM does not have a version the next version number will be added. The response will contain an appropriate `Location` header to reference the BOM in the repository. |
+| /search | GET | One of `group`, `name`, `version` | rest of `group`, `name`, `version` | Retrieve a list of BOM serial numbers and versions that match the supplied metadata component search criteria. |
 
 NOTE:
 BOM serial numbers should be unique for a particular device/software version.
@@ -52,24 +64,25 @@ it with the same serial number and version. But this is not recommended.
 Retrieving a BOM from the repository
 
 ```
-curl -X GET "https://www.example.com/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79" -H  "accept: application/vnd.cyclonedx+json; version=1.3"
+curl -X GET 'http://localhost:8000/v1/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79' -H 'accept: application/vnd.cyclonedx+json; version=1.4'
 ```
 
 Adding a new BOM to the repository
 
 ```
-curl -X POST "https://www.example.com/bom" -H  "accept: */*" -H  "Content-Type: application/vnd.cyclonedx+json; version=1.3" -d "{\"bomFormat\":\"CycloneDX\",\"specVersion\":\"1.3\",\"serialNumber\":\"urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79\",\"version\":1,\"components\":[{\"type\":\"library\",\"name\":\"acme-library\",\"version\":\"1.0.0\"}]}"```
+curl -X POST "http://localhost:8000/v1/bom" -H  "accept: */*" -H  "Content-Type: application/vnd.cyclonedx+json; version=1.4" -d "{\"bomFormat\":\"CycloneDX\",\"specVersion\":\"1.3\",\"serialNumber\":\"urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79\",\"version\":1,\"components\":[{\"type\":\"library\",\"name\":\"acme-library\",\"version\":\"1.0.0\"}]}"
+
 ```
 
 Deleting a BOM from the repository
 
 ```
-curl -X DELETE "https://www.example.com/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79" -H  "accept: */*"
+curl -X DELETE 'http://localhost:8000/v1/bom/serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79?version=1' -H 'accept: */*'
 ```
 
 ## Configuration
 
-The server can be configured by changing the `appsettings.json` file or setting
+The server can be configured by changing the `src/CycloneDX.BomRepoServer/appsettings.json` file or setting
 the following environment variables
 
 | Environment Variable Name | Supported Values | Description | Default Value |

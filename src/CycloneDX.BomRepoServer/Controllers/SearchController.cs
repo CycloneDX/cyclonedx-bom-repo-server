@@ -31,7 +31,7 @@ using Microsoft.Extensions.Logging;
 namespace CycloneDX.BomRepoServer.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("v1/[controller]")]
     public class SearchController : ControllerBase
     {
         private readonly AllowedMethodsOptions _allowedMethods;
@@ -45,6 +45,13 @@ namespace CycloneDX.BomRepoServer.Controllers
             _cacheService = cacheService;
         }
 
+        /// <summary>Get BOM by specific below option(s): group, name, version</summary>
+        /// <param name="group">Optional: metadata.component.group</param>
+        /// <param name="name">Optional: metadata.component.name</param>
+        /// <param name="version">Optional: metadata.component.version</param>
+        /// <returns>Matching BOM content</returns>
+        /// <response code="200">Returns matching BOM</response>
+        /// <response code="403">Need at least one parameter</response>
         [HttpGet]
         public ActionResult<IEnumerable<BomIdentifier>> Get([CanBeNull] string group, [CanBeNull] string name, [CanBeNull] string version)
         {
