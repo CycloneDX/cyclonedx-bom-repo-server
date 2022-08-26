@@ -156,7 +156,7 @@ jobs:
             ./Dockerfile
 
       - name: Push container image to docker.io
-        uses: redhat-actions/push-to-registry@v2.5
+        uses: redhat-actions/push-to-registry@v2.6
         with:
           image: ${{ steps.container.outputs.image }}
           tags: ${{ steps.container.outputs.tags }}
