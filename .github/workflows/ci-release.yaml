@@ -40,7 +40,7 @@ jobs:
         uses: actions/checkout@v3.0.2
 
       - name: Set up .Net
-        uses: actions/setup-dotnet@v2.0.0
+        uses: actions/setup-dotnet@v2.1.0
         with:
           dotnet-version: "${{ env.DOTNET_VERSION }}"
 
@@ -90,7 +90,7 @@ jobs:
         uses: actions/checkout@v3.0.2
 
       - name: Set up .Net
-        uses: actions/setup-dotnet@v2.0.0
+        uses: actions/setup-dotnet@v2.1.0
         with:
           dotnet-version: "${{ env.DOTNET_VERSION }}"
 
@@ -141,7 +141,7 @@ jobs:
 
       - name: Build multi-arch container image
         id: container
-        uses: redhat-actions/buildah-build@v2.9
+        uses: redhat-actions/buildah-build@v2.10
         with:
           image: cyclonedx-bom-repo-server
           tags: >-
@@ -156,7 +156,7 @@ jobs:
             ./Dockerfile
 
       - name: Push container image to docker.io
-        uses: redhat-actions/push-to-registry@v2.5
+        uses: redhat-actions/push-to-registry@v2.6
         with:
           image: ${{ steps.container.outputs.image }}
           tags: ${{ steps.container.outputs.tags }}
