@@ -77,7 +77,7 @@ namespace CycloneDX.BomRepoServer.Controllers
             return result;
         }
         
-        /// <summary>Get BOM by sepcify valid serial number(urn:uuid) or CDX URN(urn:cdx)</summary>
+        /// <summary>Get BOM by specific valid serial number(urn:uuid) or CDX URN(urn:cdx)</summary>
         /// <param name="bomIdentifier">Required: serial number(urn:uuid) or CDX URN(urn:cdx)</param>
         /// <returns>Matching BOM content</returns>
         /// <response code="200">Returns matching BOM</response>

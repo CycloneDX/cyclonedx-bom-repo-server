@@ -61,7 +61,7 @@ namespace CycloneDX.BomRepoServer.Controllers
             return SerialNumberRegex.IsMatch(serialNumber);
         }
         
-        /// <summary>Get BOM by sepcify serial number(urn:uuid)</summary>
+        /// <summary>Get BOM by specific serial number(urn:uuid)</summary>
         /// <param name="serialNumber">Required: serialNumber as valid serialNumber(urn:uuid) or CDX URN(urn:cdx)</param>
         /// <param name="version">Optional: version of BOM. Required if original set to 'true'</param>
         /// <param name="original">Optional: if return unmodified BOM or not</param>
@@ -216,7 +216,7 @@ namespace CycloneDX.BomRepoServer.Controllers
         }
         
         /// <summary>
-        /// Delete BOM by sepcify sericalNumber and filter version if apply
+        /// Delete BOM by specific serialNumber and filter version if apply
         /// </summary>
         /// <param name="serialNumber">Required: serialNumber(urn:uuid) or CDX URN(urn:cdx)</param>
         /// <param name="version">Optional: version of BOM</param>

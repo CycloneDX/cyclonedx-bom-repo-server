@@ -45,7 +45,7 @@ namespace CycloneDX.BomRepoServer.Controllers
             _cacheService = cacheService;
         }
 
-        /// <summary>Get BOM by sepcify below option(s): group, name, version</summary>
+        /// <summary>Get BOM by specific below option(s): group, name, version</summary>
         /// <param name="group">Optional: metadata.component.group</param>
         /// <param name="name">Optional: metadata.component.name</param>
         /// <param name="version">Optional: metadata.component.version</param>

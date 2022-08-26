@@ -64,7 +64,7 @@ it with the same serial number and version. But this is not recommended.
 Retrieving a BOM from the repository
 
 ```
-curl -X GET 'http://localhost:8000/v1/bom/serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79' -H 'accept: application/vnd.cyclonedx+json; version=1.4'
+curl -X GET 'http://localhost:8000/v1/bom?serialNumber=urn%3Auuid%3A3e671687-395b-41f5-a30f-a58921a69b79' -H 'accept: application/vnd.cyclonedx+json; version=1.4'
 ```
 
 Adding a new BOM to the repository
