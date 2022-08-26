@@ -6,6 +6,7 @@ USER gitpod
 # Source: https://docs.microsoft.com/dotnet/core/install/linux-scripted-manual#scripted-install
 RUN mkdir -p /home/gitpod/dotnet && curl -fsSL https://dot.net/v1/dotnet-install.sh | bash /dev/stdin --channel 6.0 --install-dir /home/gitpod/dotnet
 ENV DOTNET_ROOT=/home/gitpod/dotnet
+ENV DOTNET_CLI_TELEMETRY_OPTOUT=true
 ENV PATH=/home/gitpod/dotnet:$PATH
 
 ENV PATH=/workspace/local/bin:$PATH
