@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS builder
+FROM mcr.microsoft.com/dotnet/sdk:7.0.100 AS builder
 
 ARG APP_VERSION=0.0.0
 
