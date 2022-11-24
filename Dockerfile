@@ -12,7 +12,7 @@ RUN cd /app && mkdir /app/bin \
       --no-self-contained \
       -p:Version=${APP_VERSION}
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0
+FROM mcr.microsoft.com/dotnet/aspnet:7.0
 
 ENV TZ=Etc/UTC \
     LANG=C.UTF-8 \
