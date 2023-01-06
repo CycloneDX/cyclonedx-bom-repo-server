@@ -37,7 +37,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.3.0
 
       - name: Set up .Net
         uses: actions/setup-dotnet@v2.1.0
@@ -87,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.3.0
 
       - name: Set up .Net
         uses: actions/setup-dotnet@v2.1.0
@@ -132,7 +132,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3.0.2
+        uses: actions/checkout@v3.3.0
 
       - name: Install qemu dependency
         run: |-
