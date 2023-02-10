@@ -141,7 +141,7 @@ jobs:
 
       - name: Build multi-arch container image
         id: container
-        uses: redhat-actions/buildah-build@v2.10
+        uses: redhat-actions/buildah-build@v2.12
         with:
           image: cyclonedx-bom-repo-server
           tags: >-
