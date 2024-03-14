@@ -30,7 +30,8 @@ To build your own docker image
 ```
 git clone github.com:CycloneDX/cyclonedx-bom-repo-server.git
 cd cyclonedx-bom-repo-server
-./build-and-run.sh
+docker compose build
+docker compose up
 ```
 
 ## API Endpoints
