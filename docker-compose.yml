@@ -1,12 +1,15 @@
 version: "3.8"
 
 services:
-  minio:
-    image: 'minio/minio'
+  server:
+    image: cyclonedx/bom-repository-server
+    build: .
     environment:
-      - MINIO_ROOT_USER=bomserver-minioadmin
-      - MINIO_ROOT_PASSWORD=bomserver-minioadmin
+      - "REPO__DIRECTORY=/repo"
+      - "ALLOWEDMETHODS__GET=true"
+      - "ALLOWEDMETHODS__POST=true"
+      - "ALLOWEDMETHODS__DELETE=true"
     ports:
-      - '9000:9000'
-      - '9001:9001'
-    command: server --console-address :9001 /data
+      - 8000:8080
+    volumes:
+      - ./bomstorage:/repo
