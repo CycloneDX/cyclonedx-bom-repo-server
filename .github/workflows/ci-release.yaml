@@ -25,6 +25,9 @@ on:
 env:
   DOTNET_VERSION: "6.0"
 
+# https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/controlling-permissions-for-github_token
+permissions: {}
+
 jobs:
   create-release:
     name: Create GH Release
@@ -34,6 +37,9 @@ jobs:
     outputs:
       app_version: ${{ steps.get-version.outputs.app_version }}
       upload_url: ${{ steps.create-release.outputs.upload_url }}
+
+    permissions:
+      contents: write  # needed for creating a GH release
 
     steps:
       - name: Checkout repository
@@ -84,6 +90,9 @@ jobs:
           - linux-x64
           - linux-musl-x64
           - linux-arm64
+
+    permissions:
+      contents: write  # needed for uploading GH release assets
 
     steps:
       - name: Checkout repository
